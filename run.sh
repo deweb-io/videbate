@@ -5,7 +5,8 @@ create_sdks() {
     npm i
 
     # Create an AMD package of the SDK, untill it becomes the standard.
-    sed -ie "/output: {/,/},/c\output: {libraryTarget: 'amd', filename: 'bbs-sdk.amd.js'}," ./config/webpack/webpack.common.ts
+    sed -ie "/output: {/,/},/c\output: {libraryTarget: 'amd', filename: 'bbs-sdk.amd.js'}," \
+        ./config/webpack/webpack.common.ts
     npm run build
     cp ./dist/bbs-sdk.* ../../.
     git reset --hard
@@ -22,16 +23,22 @@ create_frontend() {
 
     # Create loadable script with operator configurations brought from the `CreatorApp` repository.
     {
-        echo -n 'const BBS_OPERATOR_CONFIGURATION = ' && cat ./backup/operator-config/operator.config.creator-stage.json
+        echo -n 'const BBS_OPERATOR_CONFIGURATION = '
+        sed -e 's/\("domainName"\)[^,]*\(,\?\)/\1: "creator-eco-stage.web.app"\2/' \
+            ./backup/operator-config/operator.config.creator-stage.json
+        echo ';'
     } > ../../bbs-sdk.config.js
 
 
     # Add the SDK to systemjs mapping.
-    sed -ie 's|"imports": {|"imports": {"@deweb/bbs-sdk": "http://localhost:8000/bbs-sdk.amd.js",|' ./src/index.html
+    sed -ie 's|"imports": {|"imports": {"@deweb/bbs-sdk": "http://localhost:8000/bbs-sdk.amd.js",|' \
+        ./src/index.html
 
     # Hijack the Staking dapplet.
-    sed -ie 's|"@deweb/bbs_staking":.*|"@deweb/bbs_staking": "http://localhost:8000/vidibate.js",|' ./backup/operator-config/dapplet.config.creator-stage.json
-    sed -ie 's|icon="cup"|icon="video"|' ./src/components/Header/Header.tsx
+    sed -ie 's|"@deweb/bbs_staking":.*|"@deweb/bbs_staking": "http://localhost:8000/vidibate.js",|' \
+        ./backup/operator-config/dapplet.config.creator-stage.json
+    sed -ie 's|icon="cup"|icon="video"|;s|https://bbs.market/METABBS|/DEBATE|' \
+        ./src/components/Header/Header.tsx
 
     npm i
     popd

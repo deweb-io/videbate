@@ -12,8 +12,11 @@ module.exports = {
         sourceType: 'module'
     },
     globals: {
-        window: 'readonly'
-        document: 'readonly'
+        window: 'readonly',
+        document: 'readonly',
+        define: 'readonly',
+        System: 'readonly',
+        BBS_OPERATOR_CONFIGURATION: 'readonly'
     },
     rules: {
         'comma-dangle': ['error', 'never'],
