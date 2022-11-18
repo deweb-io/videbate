@@ -1,43 +1,82 @@
 // Encapsulate.
 (function(){'use strict';
 
-    // Placeholder for the BBS SDK, to be loaded lazily by the Single SPA boilerplate below.
-    let BBS_SDK = null;
+    const CONTENT_VERSION = '2.22.2';
+    const VIDIBATE_DATA_BLOCK_TYPE = 'vidibate';
+    const VIDIBATE_CONTENT_BLOCK_TYPE = 'paragraph'; // Should be video, naturally.
 
-    // Vidibate logic.
+    // SDK usage.
+    // Note: The global BBS_SDK object is created by the Single SPA boilerplate below.
 
-    const state = {currentPost: null, parentPost: null};
+    // This function is meant to fetch all of a community's active posts.
+    // NOTE: Current implementation only fetches the first thousand posts!
+    // NOTE: It would be lovely if we had a way to fetch only the vidibase posts.
+    const fetchPosts = async(community) => (
+        await BBS_SDK.upvoteModule.getPosts(community, null, 1000)
+    ).items.filter((post) => post.status === 0);
 
+    // Publish a vidibate post.
+    const publish = (community, categoryId, publisher, title, content, parentPost) => BBS_SDK.upvoteModule.createPost({
+        tokenName: community,
+        categoryId: categoryId,
+        publisher: publisher,
+        title: title,
+        content: JSON.stringify({
+            time: Date.now(),
+            blocks: [{
+                type: VIDIBATE_CONTENT_BLOCK_TYPE,
+                data: {text: content}
+            }, {
+                type: VIDIBATE_DATA_BLOCK_TYPE,
+                data: {parentPost}
+            }],
+            version: CONTENT_VERSION
+        })
+    });
+
+    // Filter vidibase posts, bucketed by parent post.
+    const bucketPostsByVidibateParent = (posts) => posts.reduce((postsByParent, post) => {
+        const postContent = JSON.parse(post.postContent);
+        const vidibateBlock = postContent.blocks.find((block) => block.type === VIDIBATE_DATA_BLOCK_TYPE);
+        return vidibateBlock ? {
+            ...postsByParent,
+            [vidibateBlock.data.parentPost]: [
+                ...(postsByParent[vidibateBlock.data.parentPost] || []),
+                {...post, postContent, vidibate: vidibateBlock.data}
+            ]
+        } : postsByParent;
+    }, {});
+
+    // Organize posts into a DAG.
+    const buildDAG = (posts) => {
+        const postsByParent = bucketPostsByVidibateParent(posts);
+        const mapChildPosts = (post) => ({
+            ...post, childPosts: (postsByParent[post.id] || []).map(mapChildPosts)
+        });
+        const mapParent = (post, parentPost) => {
+            post.parentPost = parentPost;
+            post.childPosts.forEach((childPost) => mapParent(childPost, post));
+            return post;
+        };
+        return (postsByParent[null] || []).map(mapChildPosts).map((post) => mapParent(post, null));
+    };
+
+    // Global state.
+    const state = {posts: null, DAG: null, currentPost: null, undoStack: []};
+
+    // Get all vidibate posts on the current node in the DAG.
     const getPosts = async() => (
-        await BBS_SDK.upvoteModule.getPosts(BBS_SDK.comfort.community, null, 1000)
+        await BBS_SDK.upvoteModule.getPosts(BBS_SDK.util.community, null, 1000)
     ).items.filter(
         (post) => post.status === 0
     ).map((post) => (
         {...post, postContent: JSON.parse(post.postContent)}
     )).reduce((posts, post) => {
-        const vidibateBlock = post.postContent.blocks.find((block) => block.type === 'vidibate');
+        const vidibateBlock = post.postContent.blocks.find((block) => block.type === VIDIBATE_DATA_BLOCK_TYPE);
         if(vidibateBlock === undefined) return posts;
-        if(vidibateBlock.data.parent !== (state.currentPost && state.currentPost.id)) return posts;
+        if(vidibateBlock.data.parentPost !== (state.currentPost && state.currentPost.id)) return posts;
         return {...posts, [post.id]: {...post, vidibate: vidibateBlock.data}};
     }, {});
-
-    const createPost = (title, content) => BBS_SDK.upvoteModule.createPost({
-        tokenName: BBS_SDK.comfort.community,
-        title: title,
-        categoryId: 'ALL',
-        publisher: BBS_SDK.comfort.user.id,
-        content: JSON.stringify({
-            time: Date.now(),
-            blocks: [{
-                type: 'paragraph',
-                data: {text: content}
-            }, {
-                type: 'vidibate',
-                data: {parent: state.currentPost && state.currentPost.id}
-            }],
-            version: '2.22.2'
-        })
-    });
 
     // UI.
     const STYLES = {
@@ -81,7 +120,14 @@
             state.menuDiv.draw();
         };
         const submitPost = async() => {
-            console.log(await createPost(titleInput.value, contentInput.value));
+            console.log(await publish(
+                BBS_SDK.util.community,
+                'ALL',
+                BBS_SDK.util.user.id,
+                titleInput.value,
+                contentInput.value,
+                state.currentPost && state.currentPost.id
+            ));
             composeDiv.remove();
             state.postsDiv.draw();
         };
@@ -97,6 +143,19 @@
         menuDiv.innerHTML = '';
         menuDiv.add('p', 'sectionTitle', {textContent: 'Menu'});
         const menuUl = menuDiv.add('ul');
+
+        // Go to parent post.
+        if(state.currentPost) {
+            const toParentLi = menuUl.add('li', null, {textContent: 'Go to parent post'});
+            toParentLi.addEventListener('click', () => {
+                state.currentPost = state.currentPost.parentPost;
+                state.postsDiv.draw();
+                state.menuDiv.draw();
+                state.statusDiv.draw();
+            });
+        }
+
+        // New post item (either new challenge or new response).
         if(!state.composeDiv) {
             const createPostLi = menuUl.add('li', null, {textContent: state.currentPost ? 'Reply' : 'Challenge'});
             createPostLi.addEventListener('click', () => {
@@ -104,6 +163,7 @@
                 state.menuDiv.draw();
             });
         }
+
         return menuDiv;
     });
 
@@ -121,7 +181,7 @@
         postsDiv.add('p', 'sectionTitle', {textContent: 'Posts'});
         if(state.currentPost) addCurrentPostDiv(postsDiv);
         const postsUl = postsDiv.add('ul');
-        Object.values(await getPosts()).forEach((post) => {
+        (state.currentPost ? state.currentPost.childPosts : state.DAG).forEach((post) => {
             const postLi = postsUl.add('li');
             postLi.innerHTML = post.title;
             postLi.addEventListener('click', async() => {
@@ -130,7 +190,7 @@
                 state.composeDiv && state.composeDiv.remove();
             });
         });
-        state.menuDiv && state.menuDiv.draw();
+        state.menuDiv.draw();
         return postsDiv;
     });
 
@@ -138,12 +198,12 @@
         statusDiv.innerHTML = '';
         statusDiv.add('p', 'sectionTitle', {textContent: 'Status'});
         statusDiv.add('p', null, {textContent: `
-                I'm ${BBS_SDK.comfort.user ? BBS_SDK.comfort.user.displayName : 'not logged in'}
+                I'm ${BBS_SDK.util.user ? BBS_SDK.util.user.displayName : 'not logged in'}
             `});
         statusDiv.add('p', null, {textContent: state.currentPost ? `
-                viewing ${state.currentPost.title} on ${BBS_SDK.comfort.community}
+                viewing ${state.currentPost.title} on ${BBS_SDK.util.community}
             ` : `
-                viewing debates on ${BBS_SDK.comfort.community}
+                viewing debates on ${BBS_SDK.util.community}
             `});
         return statusDiv;
     });
@@ -151,13 +211,24 @@
     // The main function.
     const vidibate = async(appElement) => {
         state.statusDiv = addStatusDiv(appElement);
-        window.addEventListener('popstate', () => state.statusDiv && state.statusDiv.draw());
-        await BBS_SDK.accountModule.onAuthStateChanged(() => state.statusDiv && state.statusDiv.draw());
+        window.addEventListener('popstate', () => state.statusDiv.draw());
+        await BBS_SDK.accountModule.onAuthStateChanged(() => state.statusDiv.draw());
         setInterval(state.statusDiv.draw, 1000);
 
         state.menuDiv = addMenuDiv(appElement);
 
+        const updateDAG = async() => {
+            const posts = await fetchPosts(BBS_SDK.util.community);
+            if(posts !== state.posts) {
+                state.posts = posts;
+                state.DAG = buildDAG(posts);
+                return true;
+            }
+            return false;
+        };
+        await updateDAG();
         state.postsDiv = await addPostsDiv(appElement);
+        setInterval(async() => await updateDAG() && state.postsDiv.draw(), 1000);
 
         window.sdk = BBS_SDK;
         window.state = state;
@@ -166,6 +237,10 @@
 
     // From here on, it's all stuff that we should supply the dapplet developer with.
     // Getting the SDK from systemJS, improving it a bit, and playing nice with Single SPA.
+    // const dappletHelper = {};
+
+    // Placeholder for the BBS SDK, to be loaded on the first Single SPA stage.
+    let BBS_SDK = null;
 
     // Synchronous loading of the SDK.
     // Note that we load the operator configuation by adding a script tag.
@@ -178,17 +253,17 @@
         document.body.appendChild(scriptTag);
     });
 
-    // Initialize the SDK with some comfort functionality.
+    // Initialize the SDK with some comfortable utilities.
     const getEnrichedSDK = async() => {
-        const sdk = {...await getSDK(), comfort: {}};
+        const sdk = {...await getSDK(), util: {}};
         const getCurrentCommunity = () => window.location.href.split('/')[3];
-        sdk.comfort.community = getCurrentCommunity();
-        window.addEventListener('popstate', () => sdk.comfort.community = getCurrentCommunity());
+        sdk.util.community = getCurrentCommunity();
+        window.addEventListener('popstate', () => sdk.util.community = getCurrentCommunity());
         const updateUser = async(user) => {
             if(user) {
-                sdk.comfort.user = (await sdk.accountModule.getUsersByFirebaseUid(user.uid))[0];
+                sdk.util.user = (await sdk.accountModule.getUsersByFirebaseUid(user.uid))[0];
             } else {
-                sdk.comfort.user = null;
+                sdk.util.user = null;
             }
         };
         await sdk.accountModule.onAuthStateChanged(updateUser);
