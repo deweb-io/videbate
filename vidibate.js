@@ -1,12 +1,84 @@
 // Encapsulate.
 (function(){'use strict';
 
+    // Helper function that encapsulates all the boilerplate involved in running a dapplet.
+    // This includes handling integration with Single SPA and providing the SDK with some utilities.
+    // The function receives (optional) functions corresponding to the four Single SPA lifecycle stages:
+    // - bootstrap: called when the dapplet is first loaded into Single SPA.
+    // - mount: called when the dapplet is mounted into the DOM.
+    // - unmount: called when the dapplet is unmounted from the DOM.
+    // - unload: called when the dapplet is removed from Single SPA.
+    // These functions will be called by the helper with two arguments:
+    // - the BBS SDK object.
+    // - the DOM element that the dapplet is mounted to.
+    const registerDappletLifecycleStages = (bootstrap, mount, unmount, unload) => {
+
+        // Placeholder for the BBS SDK, to be loaded on demand.
+        let BBS_SDK = null;
+
+        // Synchronous loading of the SDK.
+        // Note that we load the operator configuation by adding a script tag.
+        const getSDK = () => new Promise((resolve) => {
+            const scriptTag = document.createElement('script');
+            scriptTag.addEventListener('load', async() => resolve(
+                new (await System.import('@deweb/bbs-sdk')).default.default(BBS_OPERATOR_CONFIGURATION)
+            ));
+            scriptTag.src = 'http://localhost:8000/bbs-sdk.config.js';
+            document.body.appendChild(scriptTag);
+        });
+
+        // Initialize the SDK with some comfortable utilities.
+        const getEnrichedSDK = async() => {
+            const sdk = {...await getSDK(), util: {}};
+            const getCurrentCommunity = () => window.location.href.split('/')[3];
+            sdk.util.community = getCurrentCommunity();
+            window.addEventListener('popstate', () => sdk.util.community = getCurrentCommunity());
+            const updateUser = async(user) => {
+                if(user) {
+                    sdk.util.user = (await sdk.accountModule.getUsersByFirebaseUid(user.uid))[0];
+                } else {
+                    sdk.util.user = null;
+                }
+            };
+            await sdk.accountModule.onAuthStateChanged(updateUser);
+            await updateUser(await sdk.accountModule.getCurrentFirebaseUser());
+            return sdk;
+        };
+
+        // General handling of a Single SPA lifecycle stage.
+        const stageFunction = async(name, stageFunction, singleSpaArgs) => {
+            if(BBS_SDK === null) {
+                BBS_SDK = await getEnrichedSDK();
+                console.info('BBS SDK loaded');
+            }
+            const element = singleSpaArgs.domElement;
+            console.info(`starting stage ${name} on element: ${element} (with ${BBS_SDK})`);
+            await stageFunction(element, BBS_SDK);
+            console.info(`completed stage ${name}`);
+        };
+
+        // Bundle the stages together as AMD definitions.
+        define(Object.entries({
+            bootstrap: bootstrap,
+            mount: mount,
+            unmount: unmount,
+            unload: unload
+        }).reduce((definitions, [stageName, stage]) => (
+            {...definitions, [stageName]: async(...args) => await stageFunction(stageName, stage, args[0])}
+        ), {}));
+    };
+
+    // Here starts the actual vidibate application.
+
     const CONTENT_VERSION = '2.22.2';
     const VIDIBATE_DATA_BLOCK_TYPE = 'vidibate';
     const VIDIBATE_CONTENT_BLOCK_TYPE = 'paragraph'; // Should be video, naturally.
 
+    // The global BBS_SDK object is populated on the bootstrap stage.
+    let BBS_SDK = null;
+    const bootstrap = (_, bbs_sdk) => BBS_SDK = bbs_sdk;
+
     // SDK usage.
-    // Note: The global BBS_SDK object is created by the Single SPA boilerplate below.
 
     // This function is meant to fetch all of a community's active posts.
     // NOTE: Current implementation only fetches the first thousand posts!
@@ -157,7 +229,7 @@
 
         // New post item (either new challenge or new response).
         if(!state.composeDiv) {
-            const createPostLi = menuUl.add('li', null, {textContent: state.currentPost ? 'Reply' : 'Challenge'});
+            const createPostLi = menuUl.add('li', null, {textContent: state.currentPost ? 'Reply' : 'New Challenge'});
             createPostLi.addEventListener('click', () => {
                 state.composeDiv = addComposeDiv(appDiv);
                 state.menuDiv.draw();
@@ -194,7 +266,7 @@
         return postsDiv;
     });
 
-    const addStatusDiv = (parentElement) => parentElement.add('div', 'section', null, function(statusDiv) {
+    const addStatusDiv = (parentElement) => parentElement.add('div', 'section', null, (statusDiv) => {
         statusDiv.innerHTML = '';
         statusDiv.add('p', 'sectionTitle', {textContent: 'Status'});
         statusDiv.add('p', null, {textContent: `
@@ -209,7 +281,7 @@
     });
 
     // The main function.
-    const vidibate = async(appElement) => {
+    const mount = async(appElement) => {
         state.statusDiv = addStatusDiv(appElement);
         window.addEventListener('popstate', () => state.statusDiv.draw());
         await BBS_SDK.accountModule.onAuthStateChanged(() => state.statusDiv.draw());
@@ -235,73 +307,7 @@
         window.getPosts = getPosts;
     };
 
-    // From here on, it's all stuff that we should supply the dapplet developer with.
-    // Getting the SDK from systemJS, improving it a bit, and playing nice with Single SPA.
-    // const dappletHelper = {};
-
-    // Placeholder for the BBS SDK, to be loaded on the first Single SPA stage.
-    let BBS_SDK = null;
-
-    // Synchronous loading of the SDK.
-    // Note that we load the operator configuation by adding a script tag.
-    const getSDK = () => new Promise((resolve) => {
-        const scriptTag = document.createElement('script');
-        scriptTag.addEventListener('load', async() => resolve(
-            new (await System.import('@deweb/bbs-sdk')).default.default(BBS_OPERATOR_CONFIGURATION)
-        ));
-        scriptTag.src = 'http://localhost:8000/bbs-sdk.config.js';
-        document.body.appendChild(scriptTag);
-    });
-
-    // Initialize the SDK with some comfortable utilities.
-    const getEnrichedSDK = async() => {
-        const sdk = {...await getSDK(), util: {}};
-        const getCurrentCommunity = () => window.location.href.split('/')[3];
-        sdk.util.community = getCurrentCommunity();
-        window.addEventListener('popstate', () => sdk.util.community = getCurrentCommunity());
-        const updateUser = async(user) => {
-            if(user) {
-                sdk.util.user = (await sdk.accountModule.getUsersByFirebaseUid(user.uid))[0];
-            } else {
-                sdk.util.user = null;
-            }
-        };
-        await sdk.accountModule.onAuthStateChanged(updateUser);
-        await updateUser(await sdk.accountModule.getCurrentFirebaseUser());
-        return sdk;
-    };
-
-    // General handling of a Single SPA lifecycle stage.
-    const generalStageFunctions = async(name, stageFunction, singleSpaArgs) => {
-        if(BBS_SDK === null) {
-            BBS_SDK = await getEnrichedSDK();
-            console.info('BBS SDK loaded');
-        }
-        const element = singleSpaArgs.domElement;
-        console.info(`starting stage ${name} on element: ${element}`);
-        await stageFunction(element);
-        console.info(`completed stage ${name}`);
-    };
-
-    // The specific functions for the lifecycle stages.
-    const stages = {
-        bootstrap: async() => null,
-        mount: async(element) => {
-            try {
-                vidibate(element, BBS_SDK);
-            } catch(error) {
-                console.error(error);
-            }
-        },
-        unmount: async(element) => {
-            element.innerHTML = '';
-        },
-        unload: async() => null
-    };
-
-    // Bundle it all together.
-    define(Object.values(stages).reduce((requireable, stage) => (
-        {...requireable, [stage.name]: async(...args) => await generalStageFunctions(stage.name, stage, args[0])}
-    ), {}));
+    // Register the stages.
+    registerDappletLifecycleStages(bootstrap, mount);
 
 }());

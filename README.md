@@ -9,3 +9,5 @@ This is strictly a developer deployment, and should not be used on unsafe networ
 ```
 
 http://localhost:3000/DEBATE/bbs_staking
+
+The code for the dapplet is in `vidibate.js` with some inline explanations.
