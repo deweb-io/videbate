@@ -5,12 +5,13 @@ create_sdk_files() {
     npm i
 
     # Create an AMD package of the SDK, untill it becomes the standard.
-    sed -nie "
-        # Read all lines to buffer (it's not a huge file).
-        :b; $ !{N; b b}; $ {
-        # Replace the output section.
-        s|output:[^}]*}|output: {libraryTarget: 'amd', filename: 'bbs-sdk.amd.js'}|;p
-    }" ./config/webpack/webpack.common.ts
+    node -e "
+        const fs = require('fs');
+        const configFile = './config/webpack/webpack.common.ts';
+        fs.writeFileSync(configFile, fs.readFileSync(configFile, 'utf8').replace(
+            /output:[^}]*}/,
+            'output: {libraryTarget: \'amd\', filename: \'bbs-sdk.amd.js\'}'
+        ));"
     npm run build
     cp ./dist/bbs-sdk.* ../../.
 
@@ -76,4 +77,4 @@ HTTPServer(("", 8000), CORSRequestHandler).serve_forever()'
 # Bring the frontend server to the foreground once the python server is done.
 fg
 
-exit 
+exit 0
