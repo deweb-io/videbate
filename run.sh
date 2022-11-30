@@ -1,34 +1,36 @@
 #!/bin/bash -eu
 
-create_sdks() {
-    pushd ./CreatorApp/SDK/
+create_sdk_files() {
+    pushd ./SDK/
     npm i
 
     # Create an AMD package of the SDK, untill it becomes the standard.
-    sed -ie "/output: {/,/},/c\output: {libraryTarget: 'amd', filename: 'bbs-sdk.amd.js'}," \
-        ./config/webpack/webpack.common.ts
+    sed -nie "
+        # Read all lines to buffer (it's not a huge file).
+        :b; $ !{N; b b}; $ {
+        # Replace the output section.
+        s|output:[^}]*}|output: {libraryTarget: 'amd', filename: 'bbs-sdk.amd.js'}|;p
+    }" ./config/webpack/webpack.common.ts
     npm run build
     cp ./dist/bbs-sdk.* ../../.
-    git reset --hard
 
     # Compile the SDK for standard use.
+    git reset --hard
     npm run build
     popd
-}
-
-create_frontend() {
-    git clone --depth=1 -b master git@github.com:deweb-io/CreatorApp
-    create_sdks
-    pushd ./CreatorApp/Frontend/
 
     # Create loadable script with operator configurations brought from the `CreatorApp` repository.
     {
         echo -n 'const BBS_OPERATOR_CONFIGURATION = '
         sed -e 's/\("domainName"\)[^,]*\(,\?\)/\1: "creator-eco-stage.web.app"\2/' \
-            ./backup/operator-config/operator.config.creator-stage.json
+            ./Frontend/backup/operator-config/operator.config.creator-stage.json
         echo ';'
-    } > ../../bbs-sdk.config.js
+    } > ../bbs-sdk.config.js
 
+}
+
+create_frontend() {
+    pushd ./Frontend/
 
     # Add the SDK to systemjs mapping.
     sed -ie 's|"imports": {|"imports": {"@deweb/bbs-sdk": "http://localhost:8000/bbs-sdk.amd.js",|' \
@@ -44,13 +46,23 @@ create_frontend() {
     popd
 }
 
-run_frontend_in_background() {
-    [ -d CreatorApp ] || create_frontend
-    (cd ./CreatorApp/Frontend/ && npm run dev:creator-stage) &
-}
+# Get the CreatorApp repo if needed.
+[ -d CreatorApp ] || git clone --depth=1 -b master git@github.com:deweb-io/CreatorApp
+pushd CreatorApp
 
-run_backend() {
-    python3 -c'
+# Create the SDK files if needed.
+[ "$(ls ../bbs-sdk.* 2>/dev/null | wc -l)" = 3 ] || create_sdk_files
+
+# Build modified frontend if it wasn't modified already.
+[ "$(git diff)" ] || create_frontend
+
+# Run the modified frontend in the background.
+(cd ./Frontend/ && npm run dev:creator-stage) &
+
+popd
+
+# Run a local CORS Web server with no cache to serve the local files.
+python3 -c'
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 class CORSRequestHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -60,9 +72,8 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Expires", "0")
         SimpleHTTPRequestHandler.end_headers(self)
 HTTPServer(("", 8000), CORSRequestHandler).serve_forever()'
-}
 
-run_frontend_in_background
-run_backend
+# Bring the frontend server to the foreground once the python server is done.
 fg
-exit 0
+
+exit 
