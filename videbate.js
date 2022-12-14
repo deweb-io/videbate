@@ -68,11 +68,11 @@
         ), {}));
     };
 
-    // Here starts the actual vidibate application.
+    // Here starts the actual videbate application.
 
     const CONTENT_VERSION = '2.22.2';
-    const VIDIBATE_DATA_BLOCK_TYPE = 'vidibate';
-    const VIDIBATE_CONTENT_BLOCK_TYPE = 'paragraph'; // Should be video, naturally.
+    const VIDEBATE_DATA_BLOCK_TYPE = 'videbate';
+    const VIDEBATE_CONTENT_BLOCK_TYPE = 'paragraph'; // Should be video, naturally.
 
     // The global BBS_SDK object is populated on the bootstrap stage.
     let BBS_SDK = null;
@@ -82,12 +82,12 @@
 
     // This function is meant to fetch all of a community's active posts.
     // NOTE: Current implementation only fetches the first thousand posts!
-    // NOTE: It would be lovely if we had a way to fetch only the vidibase posts.
+    // NOTE: It would be lovely if we had a way to fetch only the videbate posts.
     const fetchPosts = async(community) => (
         await BBS_SDK.upvoteModule.getPosts(community, null, 1000)
     ).items.filter((post) => post.status === 0);
 
-    // Publish a vidibate post.
+    // Publish a videbate post.
     const publish = (community, categoryId, publisher, title, content, parentPost) => BBS_SDK.upvoteModule.createPost({
         tokenName: community,
         categoryId: categoryId,
@@ -96,32 +96,32 @@
         content: JSON.stringify({
             time: Date.now(),
             blocks: [{
-                type: VIDIBATE_CONTENT_BLOCK_TYPE,
+                type: VIDEBATE_CONTENT_BLOCK_TYPE,
                 data: {text: content}
             }, {
-                type: VIDIBATE_DATA_BLOCK_TYPE,
+                type: VIDEBATE_DATA_BLOCK_TYPE,
                 data: {parentPost}
             }],
             version: CONTENT_VERSION
         })
     });
 
-    // Filter vidibase posts, bucketed by parent post.
-    const bucketPostsByVidibateParent = (posts) => posts.reduce((postsByParent, post) => {
+    // Filter videbate posts, bucketed by parent post.
+    const bucketPostsByVidebateParent = (posts) => posts.reduce((postsByParent, post) => {
         const postContent = JSON.parse(post.postContent);
-        const vidibateBlock = postContent.blocks.find((block) => block.type === VIDIBATE_DATA_BLOCK_TYPE);
-        return vidibateBlock ? {
+        const videbateBlock = postContent.blocks.find((block) => block.type === VIDEBATE_DATA_BLOCK_TYPE);
+        return videbateBlock ? {
             ...postsByParent,
-            [vidibateBlock.data.parentPost]: [
-                ...(postsByParent[vidibateBlock.data.parentPost] || []),
-                {...post, postContent, vidibate: vidibateBlock.data}
+            [videbateBlock.data.parentPost]: [
+                ...(postsByParent[videbateBlock.data.parentPost] || []),
+                {...post, postContent, videbate: videbateBlock.data}
             ]
         } : postsByParent;
     }, {});
 
     // Organize posts into a DAG.
     const buildDAG = (posts) => {
-        const postsByParent = bucketPostsByVidibateParent(posts);
+        const postsByParent = bucketPostsByVidebateParent(posts);
         const mapChildPosts = (post) => ({
             ...post, childPosts: (postsByParent[post.id] || []).map(mapChildPosts)
         });
@@ -136,7 +136,7 @@
     // Global state.
     const state = {posts: null, DAG: null, currentPost: null, undoStack: []};
 
-    // Get all vidibate posts on the current node in the DAG.
+    // Get all videbate posts on the current node in the DAG.
     const getPosts = async() => (
         await BBS_SDK.upvoteModule.getPosts(BBS_SDK.util.community, null, 1000)
     ).items.filter(
@@ -144,10 +144,10 @@
     ).map((post) => (
         {...post, postContent: JSON.parse(post.postContent)}
     )).reduce((posts, post) => {
-        const vidibateBlock = post.postContent.blocks.find((block) => block.type === VIDIBATE_DATA_BLOCK_TYPE);
-        if(vidibateBlock === undefined) return posts;
-        if(vidibateBlock.data.parentPost !== (state.currentPost && state.currentPost.id)) return posts;
-        return {...posts, [post.id]: {...post, vidibate: vidibateBlock.data}};
+        const videbateBlock = post.postContent.blocks.find((block) => block.type === VIDEBATE_DATA_BLOCK_TYPE);
+        if(videbateBlock === undefined) return posts;
+        if(videbateBlock.data.parentPost !== (state.currentPost && state.currentPost.id)) return posts;
+        return {...posts, [post.id]: {...post, videbate: videbateBlock.data}};
     }, {});
 
     // UI.

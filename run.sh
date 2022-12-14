@@ -38,7 +38,7 @@ create_frontend() {
         ./src/index.html
 
     # Hijack the Staking dapplet.
-    sed -ie 's|"@deweb/bbs_staking":.*|"@deweb/bbs_staking": "http://localhost:8000/vidibate.js",|' \
+    sed -ie 's|"@deweb/bbs_staking":.*|"@deweb/bbs_staking": "http://localhost:8000/videbate.js",|' \
         ./backup/operator-config/dapplet.config.creator-stage.json
     sed -ie 's|icon="cup"|icon="video"|;s|https://bbs.market/METABBS|/DEBATE|' \
         ./src/components/Header/Header.tsx
