@@ -14,6 +14,7 @@ module.exports = {
     globals: {
         BBS_OPERATOR_CONFIGURATION: 'readonly',
         Element: 'readonly',
+        firebase: 'readonly',
         System: 'readonly',
         window: 'readonly',
         define: 'readonly',

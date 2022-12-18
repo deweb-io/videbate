@@ -57,8 +57,9 @@ pushd CreatorApp
 # Build modified frontend if it wasn't modified already.
 [ "$(git diff)" ] || create_frontend
 
+# Termporarily disabled.
 # Run the modified frontend in the background.
-(cd ./Frontend/ && npm run dev:creator-stage) &
+#(cd ./Frontend/ && npm run dev:creator-stage) &
 
 popd
 
@@ -71,6 +72,8 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
+        if self.path.endswith("bbs-common.js"):
+            self.send_header("Content-Type", "application/javascript")
         SimpleHTTPRequestHandler.end_headers(self)
 HTTPServer(("", 8000), CORSRequestHandler).serve_forever()'
 
