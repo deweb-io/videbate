@@ -10,23 +10,13 @@
         <button onclick="console.log(3)">Click me</button>
     </p>
     <object type="text/html" data="./index.html" width="50%" height="50%">
-    <script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-app.js"></script>
-    <script type="module" src="./bbs-common.js"></script>
     <script type="module">
         console.log('starting index');
-        import {initialize, getPostById} from './bbs-common.js';
+        // bbs-common.js should be get by url
+        import {initialize, getPosts, getPostById} from 'https://cdn.jsdelivr.net/npm/@dewebio/bbs-common/index.js';
         // Fill in your Firebase configuration manually.
-        initialize({
-  apiKey: "XXX",
-  authDomain: "creator-eco.firebaseapp.com",
-  databaseURL: "https://creator-eco.firebaseio.com",
-  projectId: "creator-eco",
-  storageBucket: "creator-eco.appspot.com",
-  messagingSenderId: "821013254225",
-  appId: "1:821013254225:web:1c8693eb47c3bc15e1e870",
-  measurementId: "G-MWPQNST8XL"
-        });
-        // console.log(getPostById('1'));
+        initialize({projectId: 'creator-eco'});
+        getPosts();
     </script>
 </body>
 </html>
