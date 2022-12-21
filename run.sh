@@ -72,8 +72,6 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
-        if self.path.endswith("bbs-common.js"):
-            self.send_header("Content-Type", "application/javascript")
         SimpleHTTPRequestHandler.end_headers(self)
 HTTPServer(("", 8000), CORSRequestHandler).serve_forever()'
 

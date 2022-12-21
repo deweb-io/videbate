@@ -2,18 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title></title>
+    <title>Videbate</title>
 </head>
 <body>
-    <h1>My First Web Page</h1>
-    <p>My first paragraph.
-        <button onclick="console.log(3)">Click me</button>
-    </p>
-    <object type="text/html" data="./index.html" width="50%" height="50%">
     <script type="module">
         console.log('starting index');
-        // bbs-common.js should be get by url
-        import {initialize, getPosts, getPostById} from 'https://cdn.jsdelivr.net/npm/@dewebio/bbs-common/index.js';
+        import {initialize, getPosts} from 'https://cdn.jsdelivr.net/npm/@dewebio/bbs-common/index.js';
         // Fill in your Firebase configuration manually.
         initialize({projectId: 'creator-eco'});
         getPosts();
