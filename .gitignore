@@ -1,3 +1,2 @@
-/bbs-sdk.*
-/CreatorApp/
-/operator.config.json
+/.nyc_output/
+/node_modules/
