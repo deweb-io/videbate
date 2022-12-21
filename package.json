@@ -2,7 +2,7 @@
   "name": "videbate",
   "type": "module",
   "version": "0",
-  "description": "A bapplet for a video debate over the BBS core-UI",
+  "description": "A plugin for video debates over the BBS core-UI",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -31,7 +31,9 @@
   "homepage": "https://github.com/deweb-io/videbate#readme",
   "private": false,
   "dependencies": {
-    "fastify": "^4.10.2"
+    "dotenv": "^16.0.3",
+    "fastify": "^4.10.2",
+    "postgres": "^3.3.2"
   },
   "devDependencies": {
     "chai": "^4.3.7",
