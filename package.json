@@ -5,7 +5,8 @@
   "description": "A plugin for video debates over the BBS core-UI",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "refresh-db": "node -e '(async() => {await (await import(\"./db.js\")).refreshDatabase(); process.exit(0);})()'",
+    "serve": "node index.js",
     "dev": "npx fastify start routes.js",
     "test": "npx nyc mocha test.js"
   },

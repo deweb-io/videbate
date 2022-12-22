@@ -4,7 +4,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 const SQL = postgres();
 
-const init = async() => {
+export const health = async() => await SQL`SELECT 1 FROM posts LIMIT 1` && 'OK';
+
+export const refreshDatabase = async() => {
+    console.warn('refreshing the database...');
     await SQL`
         DROP TABLE IF EXISTS posts;
     `;
@@ -23,13 +26,12 @@ const init = async() => {
             `;
         }
     }
+    console.warn('database refreshed!');
 };
 
-const getPosts = async() => {
-    return await SQL`SELECT * FROM posts`;
-};
+export const getPosts = async() => await SQL`SELECT * FROM posts`;
 
-export {
-    init,
+export default {
+    health,
     getPosts
 };

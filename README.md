@@ -34,8 +34,9 @@ Create an `.env` file with some basic params:
 * `PGPASSWORD` - Postgres user password (defaults to no-password)
 
 ```sh
-npm install    # Install dependencies
-npm test       # Run tests (no tests ATM)
-npm dev        # Run the Web server in debug mode
-npm run start  # Run the Web server in production mode
+npm install          # Install dependencies
+npm refreshDatabase  # Initialize the database (drops and recreates the table)
+npm test             # Run tests (no tests ATM)
+npm dev              # Run the Web server in debug mode
+npm run start        # Run the Web server in production mode
 ```
