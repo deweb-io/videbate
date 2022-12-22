@@ -5,12 +5,11 @@
     <title>Videbate</title>
 </head>
 <body>
+    <div id="videbate"></div>
     <script type="module">
         console.log('starting index');
-        import {initialize, getPosts} from 'https://cdn.jsdelivr.net/npm/@dewebio/bbs-common/index.js';
-        // Fill in your Firebase configuration manually.
-        initialize({projectId: 'creator-eco'});
-        getPosts();
+        import {mount} from './videbate.js';
+        await mount(document.getElementById('videbate'));
     </script>
 </body>
 </html>
