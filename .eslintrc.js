@@ -5,15 +5,19 @@ module.exports = {
         node: true
     },
     extends: [
-        'eslint:recommended'
+        'eslint:recommended',
+        'plugin:import/errors',
+        'plugin:import/warnings',
+        'google'
     ],
     parserOptions: {
-        ecmaVersion: 2018,
+        ecmaVersion: 'latest',
         sourceType: 'module'
     },
     globals: {
-        BBS_OPERATOR_CONFIGURATION: 'readonly',
+        describe: 'readonly',
         Element: 'readonly',
+        it: 'readonly',
         System: 'readonly',
         window: 'readonly',
         define: 'readonly',
@@ -28,8 +32,6 @@ module.exports = {
         'quotes': ['error', 'single'],
         'semi': ['error', 'always'],
         'space-before-function-paren': ['error', 'never'],
-        '@typescript-eslint/no-explicit-any': 'off',
-        '@typescript-eslint/no-non-null-assertion': 'off',
         'keyword-spacing': ['error', {after: false, overrides: {
             'const': {'after': true},
             'default': {'after': true},
