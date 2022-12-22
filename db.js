@@ -6,6 +6,7 @@ const SQL = postgres();
 
 export const health = () => SQL`SELECT 1 FROM posts LIMIT 1` && 'OK';
 
+// Will eventually be moved to migrations.
 export const refreshDatabase = async() => {
     console.warn('refreshing the database...');
     await SQL`
@@ -22,9 +23,13 @@ export const refreshDatabase = async() => {
     console.warn('database refreshed!');
 };
 
+export const getPosts = () => SQL`SELECT * FROM posts`;
+
 const getParentId = (id) => id.split(':').slice(0, -1).join(':');
 
 const hasParent = async(id) => (await SQL`SELECT 1 FROM posts WHERE id = ${getParentId(id)}`).length === 1;
+
+// Database Integrity Protection
 
 const validateId = async(id) => {
     const components = id.split(':');
@@ -41,12 +46,18 @@ const validateId = async(id) => {
     return true;
 };
 
+// Posts should only ever be inserted with this function!
 export const addPost = async(id) => {
     await validateId(id);
     await SQL`INSERT INTO posts(id) VALUES (${id})`;
 };
 
-export const getPosts = () => SQL`SELECT * FROM posts`;
+// Posts should only ever be updated with this function!
+export const updatePost = async(id, numComments) => await SQL`UPDATE posts SET
+    verified = CURRENT_TIMESTAMP,
+    updated = CURRENT_TIMESTAMP,
+    num_comments = ${numComments}
+WHERE id = ${id}`;
 
 // Beware - calling this really closes the connection to the database till the module is reloaded.
 export const killConnection = () => SQL.end();
