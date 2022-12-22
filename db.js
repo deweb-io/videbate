@@ -50,6 +50,7 @@ const validateId = async(id) => {
 export const addPost = async(id) => {
     await validateId(id);
     await SQL`INSERT INTO posts(id) VALUES (${id})`;
+    return {id};
 };
 
 // Posts should only ever be updated with this function!

@@ -12,13 +12,15 @@ const expectError = async(throwingFunction, message) => {
     expect(functionResult.message).to.equal(message);
 };
 
-
 describe('Testing database', () => {
     let db;
     let now;
 
-    beforeEach(async() => {
+    before(async() => {
         db = await import('./db.js');
+    });
+
+    beforeEach(async() => {
         await db.refreshDatabase();
         now = new Date();
     });
@@ -63,5 +65,46 @@ describe('Testing database', () => {
         expect(updatedPost.num_comments).to.equal(5);
         expect(now - updatedPost.verified).to.be.lessThan(100);
         expect(updatedPost.verified).to.be.greaterThan(updatedPost.created);
+    });
+});
+
+describe('Testing Web server', () => {
+    let server;
+    let db;
+
+    before(async() => {
+        db = await import('./db.js');
+        await db.refreshDatabase();
+
+        server = (await import('fastify')).default({logger: false});
+        server.register(await import('./routes.js'));
+    });
+
+    beforeEach(async() => {
+        await db.refreshDatabase();
+    });
+
+    after(async() => {
+        await db.killConnection();
+        await server.close();
+    });
+
+    it('Tests health endpoint', async() => {
+        const healthResponse = await server.inject({method: 'GET', url: '/health'});
+        expect(healthResponse.statusCode).to.equal(200);
+    });
+
+    it('Tests post creation endpoint', async() => {
+        const newResponse = await server.inject({method: 'POST', url: '/new', payload: {id: '1'}});
+        expect(newResponse.statusCode).to.equal(201);
+        expect(newResponse.json().id).to.equal('1');
+        expect((await db.getPosts())[0].id).to.equal('1');
+    });
+
+    it('Tests post display endpoint', async() => {
+        const showResponse = await server.inject({method: 'POST', url: '/show', payload: {id: '1'}});
+        expect(showResponse.statusCode).to.equal(200);
+        expect(showResponse.headers['content-type']).to.equal('text/html');
+        expect(showResponse.payload.slice(0, 15)).to.equal('<!DOCTYPE html>');
     });
 });

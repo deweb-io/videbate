@@ -16,6 +16,7 @@ module.exports = {
     },
     globals: {
         after: 'readonly',
+        before: 'readonly',
         beforeEach: 'readonly',
         describe: 'readonly',
         Element: 'readonly',
