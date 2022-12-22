@@ -8,7 +8,7 @@ export const health = () => SQL`SELECT 1 FROM posts LIMIT 1` && 'OK';
 
 // Will eventually be moved to migrations.
 export const refreshDatabase = async() => {
-    console.warn('refreshing the database...');
+    console.warn(`refreshing database ${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`);
     await SQL`
         DROP TABLE IF EXISTS posts;
     `;
@@ -20,7 +20,7 @@ export const refreshDatabase = async() => {
         num_comments INTEGER NOT NULL DEFAULT 0
     )`;
     await SQL`CREATE INDEX posts_verified ON posts(verified)`;
-    console.warn('database refreshed!');
+    console.warn(`database ${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE} refresehd`);
 };
 
 export const getPosts = () => SQL`SELECT * FROM posts`;

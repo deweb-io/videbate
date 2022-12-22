@@ -3,12 +3,16 @@
   "type": "module",
   "version": "0",
   "description": "A plugin for video debates over the BBS core-UI",
-  "main": "index.js",
+  "main": "./src/server.js",
+  "exports": {
+    "./": "./src/"
+  },
   "scripts": {
     "refresh-db": "node -e '(async() => {await (await import(\"./db.js\")).refreshDatabase(); process.exit(0);})()'",
-    "serve": "node index.js",
-    "dev": "npx fastify start routes.js",
-    "test": "npx nyc mocha test.js"
+    "serve": "node ./src/server.js",
+    "dev": "npx fastify start ./src/routes.js",
+    "test": "npx mocha ./src/test.js",
+    "coverage": "npx nyc -a npm test"
   },
   "engines": {
     "node": "18"
