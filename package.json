@@ -1,0 +1,48 @@
+{
+  "name": "videbate",
+  "type": "module",
+  "version": "0",
+  "description": "A plugin for video debates over the BBS core-UI",
+  "main": "index.js",
+  "scripts": {
+    "refresh-db": "node -e '(async() => {await (await import(\"./db.js\")).refreshDatabase(); process.exit(0);})()'",
+    "serve": "node index.js",
+    "dev": "npx fastify start routes.js",
+    "test": "npx nyc mocha test.js"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deweb-io/videbate.git"
+  },
+  "keywords": [
+    "BBS",
+    "message-board",
+    "social",
+    "video",
+    "debate"
+  ],
+  "author": "Israel Levin",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/deweb-io/videbate/issues"
+  },
+  "homepage": "https://github.com/deweb-io/videbate#readme",
+  "private": false,
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "fastify": "^4.10.2",
+    "postgres": "^3.3.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "eslint": "^8.30.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-import": "^2.26.0",
+    "fastify-cli": "^5.7.0",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0"
+  }
+}

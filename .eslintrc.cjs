@@ -18,7 +18,6 @@ module.exports = {
         describe: 'readonly',
         Element: 'readonly',
         it: 'readonly',
-        System: 'readonly',
         window: 'readonly',
         define: 'readonly',
         document: 'readonly'
