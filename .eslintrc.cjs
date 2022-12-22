@@ -15,6 +15,8 @@ module.exports = {
         sourceType: 'module'
     },
     globals: {
+        after: 'readonly',
+        beforeEach: 'readonly',
         describe: 'readonly',
         Element: 'readonly',
         it: 'readonly',
