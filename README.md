@@ -36,7 +36,8 @@ Create an `.env` file with some basic params:
 ```sh
 npm install          # Install dependencies
 npm refreshDatabase  # Initialize the database (drops and recreates the table)
-npm test             # Run tests (no tests ATM)
+npm test             # Run tests
+npm coverage         # Run tests and check coverage
 npm dev              # Run the Web server in debug mode
 npm run start        # Run the Web server in production mode
 ```

@@ -12,7 +12,7 @@
     "serve": "node ./src/server.js",
     "dev": "npx fastify start ./src/routes.js",
     "test": "npx mocha ./src/test.js",
-    "coverage": "npx nyc -a npm test"
+    "coverage": "npx c8 --100 --skip-full --exclude src/test.js npm run test"
   },
   "engines": {
     "node": "18"
@@ -41,12 +41,12 @@
     "postgres": "^3.3.2"
   },
   "devDependencies": {
+    "c8": "^7.12.0",
     "chai": "^4.3.7",
     "eslint": "^8.30.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.26.0",
     "fastify-cli": "^5.7.0",
-    "mocha": "^10.2.0",
-    "nyc": "^15.1.0"
+    "mocha": "^10.2.0"
   }
 }
