@@ -64,9 +64,11 @@ export const updatePost = async(id, numComments) => await psql`UPDATE posts SET
     num_comments = ${numComments}
 WHERE id = ${idToDb(id)}`;
 
-export const getPost = async(id) => (await psql`SELECT * FROM posts WHERE id = ${idToDb(id)}`).map(
-    (dbPost) => ({...dbPost, id: idFromDb(dbPost.id)})
-)[0];
+// Works with partial IDs as well.
+export const getPost = async(id) => (await psql`SELECT * FROM posts
+    WHERE id LIKE ${`%${idToDb(id)}`}
+    ORDER BY LENGTH(id), id
+`).map((dbPost) => ({...dbPost, id: idFromDb(dbPost.id)}))[0];
 
 export const getChildren = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}

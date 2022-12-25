@@ -12,7 +12,7 @@ const expectError = async(throwingFunction, message) => {
     expect(functionResult.message).to.equal(message);
 };
 
-describe('Database dependant tests', () => {
+describe('Database dependant tests', () => { // We should mock the database for any non-db tests.
     let db;
     let now;
 
@@ -63,6 +63,10 @@ describe('Database dependant tests', () => {
             await db.addPost(['a', 'd']);
             expect((await db.getChildren(['a'])).length).to.equal(3);
             expect((await db.getDecendants()).length).to.equal(7);
+
+            // Test post retrieval from partial ids.
+            expect((await db.getPost(['d'])).id).to.deep.equal(['a', 'd']);
+            expect((await db.getPost(['b', 'd'])).id).to.deep.equal(['a', 'b', 'd']);
         });
 
         it('Tests post integrity protection', async() => {
@@ -108,8 +112,12 @@ describe('Database dependant tests', () => {
         });
 
         after(async() => {
-            await db.killConnection();
             await server.close();
+        });
+
+        it('Tests 404', async() => {
+            const healthResponse = await server.inject({method: 'GET', url: '/nosuchpath'});
+            expect(healthResponse.statusCode).to.equal(404);
         });
 
         it('Tests health endpoint', async() => {
@@ -117,15 +125,17 @@ describe('Database dependant tests', () => {
             expect(healthResponse.statusCode).to.equal(200);
         });
 
-        it('Tests post creation endpoint', async() => {
-            const newResponse = await server.inject({method: 'POST', url: '/new', payload: {id: ['a']}});
-            expect(newResponse.statusCode).to.equal(201);
-            expect(newResponse.json().id).to.deep.equal(['a']);
-            expect((await db.getPost(['a'])).id).to.deep.equal(['a']);
-        });
+        it('Tests post creation and display', async() => {
+            // This is currently an actual post in creator-eco-stage. It probably shouldn't be :)
+            const id = ['SK5we2vyudZoUwF5ee6g'];
 
-        it('Tests post display endpoint', async() => {
-            const showResponse = await server.inject({method: 'POST', url: '/show', payload: {id: ['a']}});
+            const newResponse = await server.inject({method: 'POST', url: '/new', payload: {id}});
+            expect(newResponse.statusCode).to.equal(201);
+            expect(newResponse.json().id).to.deep.equal(id);
+            expect((await db.getPost(id)).id).to.deep.equal(id);
+
+            await server.inject({method: 'POST', url: '/new', payload: {id}});
+            const showResponse = await server.inject({method: 'POST', url: '/show', payload: {id}});
             expect(showResponse.statusCode).to.equal(200);
             expect(showResponse.headers['content-type']).to.equal('text/html');
             expect(showResponse.payload.slice(0, 15)).to.equal('<!DOCTYPE html>');
