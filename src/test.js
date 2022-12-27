@@ -18,6 +18,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
 
     before(async() => {
         db = await import('./db.js');
+        process.env.PGDATABASE = `${process.env.PGDATABASE}_test`;
     });
 
     beforeEach(async() => {
@@ -103,6 +104,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             db = await import('./db.js');
             await db.refreshDatabase();
 
+            process.env.FASTIFY_SWAGGER = 'true';
             server = (await import('fastify')).default({logger: false});
             server.register(await import('./routes.js'));
         });
