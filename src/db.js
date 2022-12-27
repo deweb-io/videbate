@@ -30,8 +30,9 @@ export const refreshDatabase = async() => {
 
 // Post ID conversion.
 const ID_DELIMITER = ':';
-const idToDb = (id) => id.join(ID_DELIMITER);
 const idFromDb = (dbId) => dbId.split(ID_DELIMITER);
+const idToDb = (id) => id.join(ID_DELIMITER);
+const partialIdToDb = (id) => `%${idToDb(id)}`;
 
 // Database Integrity Protection
 const getParentId = (id) => id.slice(0, -1);
@@ -39,12 +40,14 @@ const hasParent = async(id) => (await psql`SELECT 1 FROM posts WHERE id = ${idTo
 const validateId = async(id) => {
     if(id.length > 1) {
         if(new Set(id).size !== id.length) {
-            throw new Error(`database integrity threatened: duplicate components in requested id (${idToDb(id)} - ${
+            throw new Error(`database integrity error: duplicate component(s) ${
                 id.filter((component, index) => id.indexOf(component) !== index).join(', ')
-            })`);
+            } in requested id ${idToDb(id)}`);
         }
         if(!await hasParent(id)) {
-            throw new Error(`database integrity threatened: ${idToDb(id)} has no parent in the posts table`);
+            throw new Error(`database integrity error: parent missing ${
+                idToDb(id.slice(0, -1))
+            } for requested id ${idToDb(id)}`);
         }
     }
     return true;
@@ -64,14 +67,13 @@ export const updatePost = async(id, numComments) => await psql`UPDATE posts SET
     num_comments = ${numComments}
 WHERE id = ${idToDb(id)}`;
 
-// Works with partial IDs as well.
-export const getPost = async(id) => {
+export const getPost = async(partialId) => {
     const posts = await psql`SELECT * FROM posts
-        WHERE id LIKE ${`%${idToDb(id)}`}
+        WHERE id LIKE ${partialIdToDb(partialId)}
         ORDER BY LENGTH(id), id
     `;
     if(posts.length === 0) {
-        throw new Error(`no posts found for id ${idToDb(id)}`);
+        throw new Error(`no posts found for partial id ${idToDb(partialId)}`);
     }
     return {...posts[0], id: idFromDb(posts[0].id)};
 };
@@ -84,3 +86,8 @@ export const getChildren = async(id) => (await psql`SELECT id FROM posts
 export const getDecendants = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}
 `).map((post) => post.id);
+
+export const getPostData = async(partialId) => {
+    const post = await getPost(partialId);
+    return {...post, children: await getChildren(post.id)};
+};

@@ -72,11 +72,11 @@ describe('Database dependant tests', () => { // We should mock the database for 
         it('Tests post integrity protection', async() => {
             await expectError(
                 async() => await db.addPost(['a', 'a']),
-                'database integrity threatened: duplicate components in requested id (a:a - a)'
+                'database integrity error: duplicate component(s) a in requested id a:a'
             );
             await expectError(
                 async() => await db.addPost(['a', 'b', 'c']),
-                'database integrity threatened: a:b:c has no parent in the posts table'
+                'database integrity error: parent missing a:b for requested id a:b:c'
             );
         });
 

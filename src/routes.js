@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as db from './db.js';
 
 const getPost = async(postId) => {
-    return `const postData = ${JSON.stringify(await db.getPost(postId))};`;
+    return `const postData = ${JSON.stringify(await db.getPostData(postId))};`;
 };
 
 const showTemplate = fs.readFileSync('./showPostTemplate.html', 'utf8');
