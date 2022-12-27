@@ -14,12 +14,13 @@ const importFirstOf = async(...names) => {
     ).join(', ')}`);
 };
 
-const firebase = await importFirstOf(
+export const firebase = await importFirstOf(
     'firebase/app', './firebase.js', 'https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js'
 );
-const firestore = await importFirstOf(
+export const firestore = await importFirstOf(
     'firebase/firestore', './firebase-firestore.js', 'https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js'
 );
+export let closer = null;
 let postsCollection = null;
 
 export const initialize = async(firebaseProject) => {
@@ -28,7 +29,12 @@ export const initialize = async(firebaseProject) => {
         return console.warn('Not attempting to initialize Firebase again.');
     }
     const app = firebase.initializeApp({projectId: firebaseProject});
-    postsCollection = firestore.collection(firestore.getFirestore(app), 'Post');
+    const firestoreInstance = firestore.getFirestore(app);
+    postsCollection = firestore.collection(firestoreInstance, 'Post');
+    closer = () => {
+        firestore.terminate(firestoreInstance);
+    };
+
     console.info('Firebase initialized');
 };
 

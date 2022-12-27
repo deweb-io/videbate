@@ -1,37 +1,38 @@
 import * as fs from 'fs';
 
-// import * as bbs from '@dewebio/bbs-common';
-import * as bbs from './bbs-common.debug.js';
-
 import * as db from './db.js';
 
-await bbs.initialize('creator-eco-stage');
-
-const showPost = async(postId) => {
-    await bbs.getPostById(postId);
+const getPost = async(postId) => {
+    return `const postData = ${JSON.stringify(await db.getPost(postId))};`;
 };
 
-const staticRoutes = {
-    '/show': ['text/html', fs.readFileSync('./index.html', 'utf8')],
-    '/videbate.js': ['text/javascript', fs.readFileSync('./videbate.js', 'utf8')]
-};
-const serveStatic = (request, reply) => {
-    if(request.url in staticRoutes) {
-        return reply.header('Content-Type', staticRoutes[request.url][0]).send(staticRoutes[request.url][1]);
-    }
-    return reply.code(404).send('Not Found');
-};
+const showTemplate = fs.readFileSync('./showPostTemplate.html', 'utf8');
+const videbateJs = fs.readFileSync('./videbate.js', 'utf8');
 
 export default async(fastify, _) => {
+    if(process.env.FASTIFY_ADDRESS) {
+        await fastify.register(await import('@fastify/swagger'));
+        await fastify.register(await import('@fastify/swagger-ui'));
+    }
+
     fastify.get('/health', async(_, reply) => await db.health());
-    fastify.post('/new', async(request, reply) => reply.code(201).send(await db.addPost(request.body.id)));
-    fastify.post('/show', async(request, reply) => {
+
+    fastify.post('/new', {
+        schema: {body: {type: 'object', properties: {id: {type: 'array', items: {type: 'string'}}}}}
+    }, async(request, reply) => reply.code(201).send(await db.addPost(request.body.id)));
+
+    fastify.post('/show', {
+        schema: {body: {type: 'object', properties: {id: {type: 'array', items: {type: 'string'}}}}}
+    }, async(request, reply) => {
         try {
-            await showPost(request.body.id.at(-1));
+            return reply
+                .type('text/html')
+                .send(showTemplate.replace('const postData = null;', await getPost(request.body.id)));
         } catch(error) {
-            return reply.code(404).send('Post not Found');
+            return reply.code(404).type('text/plain').send('post not found');
         }
-        return serveStatic(request, reply);
     });
-    fastify.get('*', async(request, reply) => serveStatic(request, reply));
+
+    // A route for static serving of the vidibate.js file
+    fastify.get('/videbate.js', async(request, reply) => reply.type('text/javascript').send(videbateJs));
 };
