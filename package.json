@@ -11,7 +11,7 @@
     "serve": "npx fastify start ./src/routes.js",
     "dev": "sh -c 'FASTIFY_LOG_LEVEL=debug FASTIFY_WATCH=true FASTIFY_SWAGGER=true npm run serve'",
     "test": "npx mocha ./src/test.js",
-    "coverage": "npx c8 --100 --skip-full --exclude src/test.js npm run test"
+    "coverage": "npx c8 --100 --exclude src/test.js npm run test"
   },
   "engines": {
     "node": "18"

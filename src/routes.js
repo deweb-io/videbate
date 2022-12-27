@@ -10,7 +10,7 @@ const showTemplate = fs.readFileSync('./showPostTemplate.html', 'utf8');
 const videbateJs = fs.readFileSync('./videbate.js', 'utf8');
 
 export default async(fastify, _) => {
-    if(process.env.FASTIFY_ADDRESS) {
+    if(process.env.FASTIFY_SWAGGER) {
         await fastify.register(await import('@fastify/swagger'));
         await fastify.register(await import('@fastify/swagger-ui'));
     }
