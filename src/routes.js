@@ -1,5 +1,8 @@
 import * as fs from 'fs';
 
+// import * as bbs from '@dewebio/bbs-common';
+import * as bbs from './bbs-common.debug.js';
+
 import * as db from './db.js';
 
 const showTemplate = fs.readFileSync('./showTemplate.html', 'utf8');
