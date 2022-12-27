@@ -12,7 +12,7 @@ const expectError = async(throwingFunction, message) => {
     expect(functionResult.message).to.equal(message);
 };
 
-describe('Database dependant tests', () => {
+describe('Database dependant tests', () => { // We should mock the database for any non-db tests.
     let db;
     let now;
 
@@ -31,38 +31,64 @@ describe('Database dependant tests', () => {
 
     describe('Testing database', () => {
         it('Tests post insert and retrieval', async() => {
-            await db.addPost('1');
-            await db.addPost('1:2');
-            await db.addPost('1:2:3');
-            const posts = await db.getPosts();
-            expect(posts.length).to.equal(3);
-            expect(posts[0].id).to.equal('1');
-            expect(posts[0].verified).to.be.equal(null);
-            expect(posts[0].num_comments).to.equal(0);
-            expect(now - posts[0].created).to.be.lessThan(100);
-            expect(now - posts[0].updated).to.be.lessThan(100);
+            expect((await db.getChildren()).length).to.equal(0);
+            expect((await db.getDecendants()).length).to.equal(0);
+
+            await db.addPost(['a']);
+            expect((await db.getChildren()).length).to.equal(1);
+            expect((await db.getChildren(['a'])).length).to.equal(0);
+            expect((await db.getDecendants()).length).to.equal(1);
+
+            const post = (await db.getPost(['a']));
+            expect(post.id).to.deep.equal(['a']);
+            expect(post.verified).to.be.equal(null);
+            expect(post.num_comments).to.equal(0);
+            expect(now - post.created).to.be.lessThan(100);
+            expect(now - post.updated).to.be.lessThan(100);
+
+            await db.addPost(['b']);
+            expect((await db.getChildren()).length).to.equal(2);
+            expect((await db.getChildren(['a'])).length).to.equal(0);
+            expect((await db.getChildren(['b'])).length).to.equal(0);
+
+            await db.addPost(['a', 'b']);
+            await db.addPost(['a', 'b', 'c']);
+            expect((await db.getChildren()).length).to.equal(2);
+            expect((await db.getChildren(['a'])).length).to.equal(1);
+            expect((await db.getChildren(['a', 'b'])).length).to.equal(1);
+            expect((await db.getChildren(['a', 'b', 'c'])).length).to.equal(0);
+
+            await db.addPost(['a', 'b', 'd']);
+            await db.addPost(['a', 'c']);
+            await db.addPost(['a', 'd']);
+            expect((await db.getChildren(['a'])).length).to.equal(3);
+            expect((await db.getDecendants()).length).to.equal(7);
+
+            // Test post retrieval from partial ids.
+            expect((await db.getPost(['d'])).id).to.deep.equal(['a', 'd']);
+            expect((await db.getPost(['b', 'd'])).id).to.deep.equal(['a', 'b', 'd']);
         });
 
         it('Tests post integrity protection', async() => {
             await expectError(
-                async() => await db.addPost('1:1'),
-                'database integrity threatened: duplicate components in requested id (1:1 - 1)'
+                async() => await db.addPost(['a', 'a']),
+                'database integrity error: duplicate component(s) a in requested id a:a'
             );
             await expectError(
-                async() => await db.addPost('1:3:4'),
-                'database integrity threatened: 1:3:4 has no parent in the posts table'
+                async() => await db.addPost(['a', 'b', 'c']),
+                'database integrity error: parent missing a:b for requested id a:b:c'
             );
         });
 
         it('Tests database update', async() => {
-            await db.addPost('1');
-            const post = (await db.getPosts())[0];
+            await db.addPost(['a']);
+            const post = (await db.getPost(['a']));
             expect(post.verified).to.be.equal(null);
             expect(post.num_comments).to.equal(0);
             expect(now - post.updated).to.be.lessThan(100);
 
-            await db.updatePost('1', 5);
-            const updatedPost = (await db.getPosts())[0];
+            await db.updatePost(['a'], 5);
+            const updatedPost = (await db.getPost(['a']));
             expect(updatedPost.num_comments).to.equal(5);
             expect(now - updatedPost.verified).to.be.lessThan(100);
             expect(updatedPost.verified).to.be.greaterThan(updatedPost.created);
@@ -86,8 +112,13 @@ describe('Database dependant tests', () => {
         });
 
         after(async() => {
-            await db.killConnection();
             await server.close();
+            console.log('Server closed');
+        });
+
+        it('Tests 404', async() => {
+            const healthResponse = await server.inject({method: 'GET', url: '/nosuchpath'});
+            expect(healthResponse.statusCode).to.equal(404);
         });
 
         it('Tests health endpoint', async() => {
@@ -95,18 +126,25 @@ describe('Database dependant tests', () => {
             expect(healthResponse.statusCode).to.equal(200);
         });
 
-        it('Tests post creation endpoint', async() => {
-            const newResponse = await server.inject({method: 'POST', url: '/new', payload: {id: '1'}});
-            expect(newResponse.statusCode).to.equal(201);
-            expect(newResponse.json().id).to.equal('1');
-            expect((await db.getPosts())[0].id).to.equal('1');
-        });
+        it('Tests post creation and display', async() => {
+            const id = ['a'];
+            const missingId = ['b'];
 
-        it('Tests post display endpoint', async() => {
-            const showResponse = await server.inject({method: 'POST', url: '/show', payload: {id: '1'}});
+            const newResponse = await server.inject({method: 'POST', url: '/new', payload: {id}});
+            expect(newResponse.statusCode).to.equal(201);
+            expect(newResponse.json().id).to.deep.equal(id);
+            expect((await db.getPost(id)).id).to.deep.equal(id);
+
+            const showResponse = await server.inject({method: 'POST', url: '/show', payload: {id}});
             expect(showResponse.statusCode).to.equal(200);
             expect(showResponse.headers['content-type']).to.equal('text/html');
             expect(showResponse.payload.slice(0, 15)).to.equal('<!DOCTYPE html>');
+
+            const missingResponse = await server.inject({method: 'POST', url: '/show', payload: {id: missingId}});
+            console.log(missingResponse.payload);
+            expect(missingResponse.statusCode).to.equal(404);
+            expect(missingResponse.headers['content-type']).to.equal('text/plain');
+            expect(missingResponse.payload.slice(0, 15)).to.equal('post not found');
         });
     });
 });
