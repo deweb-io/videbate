@@ -118,14 +118,20 @@ describe('Database dependant tests', () => { // We should mock the database for 
             console.log('Server closed');
         });
 
-        it('Tests 404', async() => {
-            const healthResponse = await server.inject({method: 'GET', url: '/nosuchpath'});
-            expect(healthResponse.statusCode).to.equal(404);
-        });
-
         it('Tests health endpoint', async() => {
             const healthResponse = await server.inject({method: 'GET', url: '/health'});
             expect(healthResponse.statusCode).to.equal(200);
+        });
+
+        it('Tests static endpoints', async() => {
+            let response;
+            response = await server.inject({method: 'GET', url: '/nosuchpath'});
+            expect(response.statusCode).to.equal(404);
+            response = await server.inject({method: 'GET', url: '/site/nosuchpath'});
+            expect(response.statusCode).to.equal(404);
+            response = await server.inject({method: 'GET', url: '/site/videbate.js'});
+            expect(response.statusCode).to.equal(200);
+            expect(response.headers['content-type']).to.equal('application/javascript');
         });
 
         it('Tests post creation and display', async() => {
