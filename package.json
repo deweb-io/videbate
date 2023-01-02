@@ -1,7 +1,7 @@
 {
   "name": "videbate",
   "type": "module",
-  "version": "0",
+  "version": "0.0.1",
   "description": "A plugin for video debates over the BBS core-UI",
   "exports": {
     "./": "./src/"
