@@ -48,3 +48,17 @@ npm coverage         # Run tests and check coverage
 npm run dev          # Run the Web server in debug mode (auto reload and swagger enabled)
 npm run start        # Run the Web server in production mode
 ```
+
+## Deploy to GCP
+* gcloud builds submit --tag gcr.io/creator-eco-stage/videbate - build docker image remotely
+* gcloud beta run deploy --image gcr.io/creator-eco-stage/videbate --platform managed - deploy the image and run
+
+## Cloud SQL (postgres)
+First, create instance on google cloud.
+
+In order to allow connection from cloud run follow the following:
+https://towardsdatascience.com/how-to-connect-to-gcp-cloud-sql-instances-in-cloud-run-servies-1e60a908e8f2
+
+In order to connect to postgres from local during development:
+    1. add your ip to Authorized networks
+    2. set `PGHOST` to equal the public ip of the postgress instance on GCP (and update other postgres related env if needed).
