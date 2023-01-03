@@ -7,12 +7,10 @@
 <body>
     <div id="videbate"></div>
     <script type="module">
-        console.log('starting index');
         // This will get replaced with actual data by our server.
         const postData = null;
-        console.log('post data', postData);
-        import {mount} from './videbate.js';
-        await mount(document.getElementById('videbate'));
+        import {show} from '/site/videbate.js';
+        window.addEventListener('load', async() => await show(document.getElementById('videbate'), postData));
     </script>
 </body>
 </html>
