@@ -32,6 +32,7 @@ module.exports = {
         'linebreak-style': ['error', 'unix'],
         'max-len': ['error', {'code': 120}],
         'quotes': ['error', 'single'],
+        'require-jsdoc': 0,
         'semi': ['error', 'always'],
         'space-before-function-paren': ['error', 'never'],
         'keyword-spacing': ['error', {after: false, overrides: {

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 
 import * as db from './db.js';
 
-const showTemplate = fs.readFileSync('./showTemplate.html', 'utf8');
+const showTemplate = fs.readFileSync('./site/showTemplate.html', 'utf8');
 
 const showPostHandler = async(request, response, postId) => {
     try {
