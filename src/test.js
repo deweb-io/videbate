@@ -26,10 +26,6 @@ describe('Database dependant tests', () => { // We should mock the database for 
         now = new Date();
     });
 
-    after(async() => {
-        await db.killConnection();
-    });
-
     describe('Testing database', () => {
         it('Tests post insert and retrieval', async() => {
             expect((await db.getChildren()).length).to.equal(0);

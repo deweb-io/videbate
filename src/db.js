@@ -5,9 +5,6 @@ dotenv.config();
 
 const psql = postgres();
 
-// Beware - calling this really closes the connection to the database till the module is reloaded.
-export const killConnection = () => psql.end();
-
 // Report database connection and health.
 export const health = () => psql`SELECT 1 FROM posts LIMIT 1` && 'OK';
 
