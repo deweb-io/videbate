@@ -50,8 +50,7 @@ npm run start        # Run the Web server in production mode
 ```
 
 ## Deploy to GCP
-* gcloud builds submit --tag gcr.io/creator-eco-stage/videbate - build docker image remotely
-* gcloud beta run deploy --image gcr.io/creator-eco-stage/videbate --platform managed - deploy the image and run
+Set deploy env in deploy.sh and run it.
 
 ## Cloud SQL (postgres)
 First, create instance on google cloud.

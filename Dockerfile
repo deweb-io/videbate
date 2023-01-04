@@ -17,4 +17,4 @@ RUN npm i --omit=dev
 COPY . .
 
 # Run the web service on container startup.
-CMD [ "npm", "start" ]
+CMD ["node", "/usr/src/app/src/cloudRun.js"]
