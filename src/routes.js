@@ -1,13 +1,11 @@
 import * as fs from 'fs';
 
-import { Storage } from '@google-cloud/storage';
 import multer from 'fastify-multer';
 
 import * as db from './db.js';
+import { bucket } from './storage.js';
 
-const storage = new Storage({projectId: process.env.GCP_PROJECT_ID});
-const bucket = storage.bucket(process.env.GCP_BUCKET_NAME);
-const upload = multer({storage: multer.memoryStorage()});
+const uploadPreHandler = multer({storage: multer.memoryStorage()});
 
 const showTemplate = fs.readFileSync('./showTemplate.html', 'utf8');
 
@@ -57,6 +55,8 @@ export default async(fastify, _) => {
             const content = fs.readFileSync(`.${path}`, 'utf8');
             if(path.endsWith('.js')) {
                 return response.type('application/javascript').send(content);
+            } else if (path.endsWith('.html')) {
+                return response.type('text/html').send(content);
             }
         } catch(_) {
             // Ignore.
@@ -64,14 +64,8 @@ export default async(fastify, _) => {
         return response.code(404).type('text/plain').send('file not found');
     });
 
-    // Upload video page
-    fastify.get('/uploadpage', async(request, response) => {
-        const content = fs.readFileSync('./upload.html', 'utf8');
-        return response.type('text/html').send(content);
-    });
-
     // Upload a video
-    fastify.post('/upload', {preHandler: upload.single('video'), }, async(req, res) => {     
+    fastify.post('/upload', {preHandler: uploadPreHandler.single('video'), }, async(req, res) => {     
         const file = req.file;
         if (!file) {
             return res.status(400).send('No file was uploaded.');
