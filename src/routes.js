@@ -5,7 +5,7 @@ import multer from 'fastify-multer';
 
 import * as db from './db.js';
 
-const storage = new Storage({projectId: 'creator-eco-stage'});
+const storage = new Storage({projectId: process.env.GCP_PROJECT_ID});
 const bucket = storage.bucket(process.env.GCP_BUCKET_NAME);
 const upload = multer({storage: multer.memoryStorage()});
 
