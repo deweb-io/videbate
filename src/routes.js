@@ -48,7 +48,7 @@ export default async(fastify, _) => {
         schema: {params: {type: 'object', properties: {postId: {type: 'array', items: {type: 'string'}}}}}
     }, async(request, response) => showPostHandler(request, response, request.params.postId));
 
-    // A route for static serving javascript files from the `site` directory.
+    // A route for static serving files from the `site` directory.
     fastify.get('/site/:fileName', async(request, response) => {
         const path = `/site/${request.params.fileName}`;
         try {
