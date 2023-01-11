@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import multer from 'fastify-multer';
 
 import * as db from './db.js';
-import {bucket} from './storage.js';
+import {uploadHandler} from './storage.js';
 
 const uploadPreHandler = multer({storage: multer.memoryStorage()});
 
@@ -71,23 +71,13 @@ export default async(fastify, _) => {
             return response.status(400).send('No file was uploaded.');
         }
 
-        const gcsFile = bucket.file(`videbate/${file.originalname}`);
-        const stream = gcsFile.createWriteStream({
-            metadata: {
-                contentType: file.mimetype
-            }
-        });
-
-        stream.on('error', (err) => {
-            console.error(err);
-            return response.status(500).send(err);
-        });
-
-        stream.on('finish', () => {
-            // reponse was already sent by the multer middleware
-            console.log(`File ${file.originalname} was uploaded to GCS.`);
-        });
-
-        stream.end(file.buffer);
+        // Upload the file to GCS.
+        try {
+            // In case of sucess, the response will be sent by the multer middleware
+            await uploadHandler(file);
+        } catch(error) {
+            console.error(error);
+            return response.status(500).send(error);
+        }
     });
 };

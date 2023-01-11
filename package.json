@@ -8,10 +8,11 @@
   },
   "scripts": {
     "refresh-db": "node -e '(async() => {await (await import(\"./db.js\")).refreshDatabase(); process.exit(0);})()'",
-    "start": "npx fastify start ./src/routes.js",
+    "start": "npm run lint; npx fastify start ./src/routes.js",
     "dev": "sh -c 'FASTIFY_LOG_LEVEL=debug FASTIFY_WATCH=true FASTIFY_SWAGGER=true npm run start'",
     "test": "npx mocha --exit ./src/test.js",
-    "coverage": "npx c8 --100 --exclude src/test.js npm run test"
+    "coverage": "npx c8 --100 --exclude src/test.js npm run test",
+    "lint": "npx eslint ./src"
   },
   "engines": {
     "node": "18"
