@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import multer from 'fastify-multer';
 
 import * as db from './db.js';
-import { bucket } from './storage.js';
+import {bucket} from './storage.js';
 
 const uploadPreHandler = multer({storage: multer.memoryStorage()});
 
@@ -55,7 +55,7 @@ export default async(fastify, _) => {
             const content = fs.readFileSync(`.${path}`, 'utf8');
             if(path.endsWith('.js')) {
                 return response.type('application/javascript').send(content);
-            } else if (path.endsWith('.html')) {
+            } else if(path.endsWith('.html')) {
                 return response.type('text/html').send(content);
             }
         } catch(_) {
@@ -65,29 +65,29 @@ export default async(fastify, _) => {
     });
 
     // Upload a video
-    fastify.post('/upload', {preHandler: uploadPreHandler.single('video'), }, async(req, res) => {     
-        const file = req.file;
-        if (!file) {
-            return res.status(400).send('No file was uploaded.');
-        }        
-      
+    fastify.post('/upload', {preHandler: uploadPreHandler.single('video')}, async(request, response) => {
+        const file = request.file;
+        if(!file) {
+            return response.status(400).send('No file was uploaded.');
+        }
+
         const gcsFile = bucket.file(`videbate/${file.originalname}`);
         const stream = gcsFile.createWriteStream({
-          metadata: {
-            contentType: file.mimetype,
-          },
+            metadata: {
+                contentType: file.mimetype
+            }
         });
-      
+
         stream.on('error', (err) => {
             console.error(err);
-            return res.status(500).send(err);
+            return response.status(500).send(err);
         });
-      
+
         stream.on('finish', () => {
             // reponse was already sent by the multer middleware
             console.log(`File ${file.originalname} was uploaded to GCS.`);
         });
-      
+
         stream.end(file.buffer);
-      });
+    });
 };
