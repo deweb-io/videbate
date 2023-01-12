@@ -1,3 +1,9 @@
+// Try to import bbs-common from our server, defaulting to the CDN if that fails.
+const bbs = await import('/site/bbs-common.js').catch(
+    () => import('https://cdn.jsdelivr.net/npm/@dewebio/bbs-common@1.0.7/index.min.js')
+);
+console.info('bbs-common library loaded', bbs);
+
 // UI framework.
 const STYLES = {
     section: {
