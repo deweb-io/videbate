@@ -22,6 +22,10 @@ We run a small fastify server with the following endpoints:
 
 In the future, it will also serve the viewer as a Single SPA package, for more "native" integration with the BBS Web core-UI. In the more further future it may serve plugins for the BBS mobile core-UI.
 
+## BBS Network Integration
+
+We use the [bbs-common library](https://github.com/deweb-io/bbs-common/), available on npm. By default, we use the latest version from [jsdelivr](https://cdn.jsdelivr.net/npm/@dewebio/bbs-common@1.0.7/index.min.js). For convenience, you can keep your own version on `site/bbs-common.js` and it will be used instead.
+
 ## Requirements
 
 * Node 18
@@ -34,6 +38,8 @@ Create an `.env` file with some basic params:
 * `FASTIFY_ADDRESS`  - Host to serve from (defaults to 127.0.0.1)
 * `FASTIFY_PORT`     - Port to serve from (defaults to 8000)
 * `FASTIFY_SWAGGER`  - Serve swagger-UI from `/doc` (defaults to false)
+* `GCP_PROJECT_ID`   - GCP project name for video file storage (no default - required)
+* `GCP_BUCKET_NAME`  - GCP bucket name for video file storage (no default - required)
 * `PGHOST`           - Postgres host (defaults to localhost)
 * `PGPORT`           - Postgres port (defualts to 5432)
 * `PGDATABASE`       - Postgres database (schema) name (defaults to postgres)
@@ -41,10 +47,12 @@ Create an `.env` file with some basic params:
 * `PGPASSWORD`       - Postgres user password (defaults to no-password)
 
 ```sh
-npm install          # Install dependencies
-npm refreshDatabase  # Initialize the database (drops and recreates the table)
-npm test             # Run tests
-npm coverage         # Run tests and check coverage
-npm run dev          # Run the Web server in debug mode (auto reload and swagger enabled)
-npm run start        # Run the Web server in production mode
+npm install         # Install dependencies
+npm run refresh-db  # Initialize the database (drops and recreates the table)
+npm run lint        # Run the linter
+npm run test        # Run tests
+npm run coverage    # Run tests and check coverage
+npm run serve       # Run the Web server
+npm run start       # Run the Web server in production mode (with all checks)
+npm run dev         # Run the Web server in debug mode (auto reload and swagger enabled)
 ```

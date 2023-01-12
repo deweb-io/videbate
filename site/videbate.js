@@ -1,3 +1,11 @@
+// Try to import bbs-common from our server, defaulting to the CDN if that fails.
+let isRemote = false;
+const bbs = await import('./bbs-common.js').catch(() => {
+    isRemote = true;
+    return import('https://cdn.jsdelivr.net/npm/@dewebio/bbs-common@latest/index.min.js');
+});
+console.info(`bbs-common library loaded from ${isRemote ? 'remote' : 'local'}:`, bbs);
+
 // UI framework.
 const STYLES = {
     section: {
