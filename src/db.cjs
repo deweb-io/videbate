@@ -1,15 +1,15 @@
-import postgres from 'postgres';
-import dotenv from 'dotenv';
+const postgres = require('postgres');
+const dotenv = require('dotenv');
 
 dotenv.config();
 
 const psql = postgres();
 
 // Report database connection and health.
-export const health = () => psql`SELECT 1 FROM posts LIMIT 1` && 'OK';
+exports.health = () => psql`SELECT 1 FROM posts LIMIT 1` && 'OK';
 
 // Database initialization - will eventually be moved to migrations.
-export const refreshDatabase = async() => {
+exports.refreshDatabase = async() => {
     console.warn(`refreshing database ${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`);
     await psql`
         DROP TABLE IF EXISTS posts;
@@ -51,20 +51,20 @@ const validateId = async(id) => {
 };
 
 // Posts should only ever be inserted with this function!
-export const addPost = async(id) => {
+exports.addPost = async(id) => {
     await validateId(id);
     await psql`INSERT INTO posts(id) VALUES (${idToDb(id)})`;
     return {id};
 };
 
 // Posts should only ever be updated with this function!
-export const updatePost = async(id, numComments) => await psql`UPDATE posts SET
+exports.updatePost = async(id, numComments) => await psql`UPDATE posts SET
     verified = CURRENT_TIMESTAMP,
     updated = CURRENT_TIMESTAMP,
     num_comments = ${numComments}
 WHERE id = ${idToDb(id)}`;
 
-export const getPost = async(partialId) => {
+exports.getPost = async(partialId) => {
     const posts = await psql`SELECT * FROM posts
         WHERE id LIKE ${partialIdToDb(partialId)}
         ORDER BY LENGTH(id), id
@@ -75,16 +75,16 @@ export const getPost = async(partialId) => {
     return {...posts[0], id: idFromDb(posts[0].id)};
 };
 
-export const getChildren = async(id) => (await psql`SELECT id FROM posts
+exports.getChildren = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}
     AND id NOT LIKE ${idToDb([...(id || []), '%', '%'])}
 `).map((post) => post.id);
 
-export const getDecendants = async(id) => (await psql`SELECT id FROM posts
+exports.getDecendants = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}
 `).map((post) => post.id);
 
-export const getPostData = async(partialId) => {
-    const post = await getPost(partialId);
-    return {...post, children: await getChildren(post.id)};
+exports.getPostData = async(partialId) => {
+    const post = await exports.getPost(partialId);
+    return {...post, children: await exports.getChildren(post.id)};
 };

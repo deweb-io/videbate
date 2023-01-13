@@ -1,13 +1,13 @@
-import * as fs from 'fs';
+const fs = require('fs');
 
-import multer from 'fastify-multer';
+const multer = require('fastify-multer');
 
-import * as db from './db.js';
-import {uploadHandler} from './storage.js';
+const db = require('./db.cjs');
+const storage = require('./storage.cjs');
 
 const uploadPreHandler = multer({storage: multer.memoryStorage()});
 
-const showTemplate = fs.readFileSync('./showTemplate.html', 'utf8');
+const showTemplate = fs.readFileSync('./site/show.html.template', 'utf8');
 
 const showPostHandler = async(request, response, postId) => {
     try {
@@ -20,10 +20,7 @@ const showPostHandler = async(request, response, postId) => {
     }
 };
 
-export default async(fastify, _) => {
-    // Configure multipart/form-data parser
-    await fastify.register(multer.contentParser);
-
+module.exports = async(fastify, _) => {
     // Configure swagger if needed.
     if(process.env.FASTIFY_SWAGGER) {
         await fastify.register(await import('@fastify/swagger'), {swagger: {info: {
@@ -31,6 +28,9 @@ export default async(fastify, _) => {
         }}});
         await fastify.register(await import('@fastify/swagger-ui'), {routePrefix: '/doc'});
     }
+
+    // Configure multipart/form-data parser
+    await fastify.register(multer.contentParser);
 
     // A health check - let's make it a bit more thorough.
     fastify.get('/health', async(_, reply) => await db.health());
@@ -70,13 +70,13 @@ export default async(fastify, _) => {
     fastify.post('/upload', {preHandler: uploadPreHandler.single('video')}, async(request, response) => {
         const file = request.file;
         if(!file) {
-            return response.status(400).send('No file was uploaded.');
+            return response.status(400).type('text/plain').send('no file provided');
         }
 
         // Upload the file to GCS.
         try {
             // In case of sucess, the response will be sent by the multer middleware
-            await uploadHandler(file);
+            response.status(201).send(await storage.uploadHandler(file));
         } catch(error) {
             console.error(error);
             return response.status(500).send(error);

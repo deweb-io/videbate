@@ -1,12 +1,15 @@
-import {Storage} from '@google-cloud/storage';
+const storage = require('@google-cloud/storage');
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 // GOOGLE_APPLICATION_CREDENTIALS must be a secret environment variable.
-const bucket = new Storage({projectId: process.env.GCP_PROJECT_ID,
+exports.bucket = new storage.Storage({projectId: process.env.GCP_PROJECT_ID,
     credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)}).bucket(process.env.GCP_BUCKET_NAME);
 
-export const uploadHandler = async(file) => {
+exports.uploadHandler = async(file) => {
     return new Promise((resolve, reject) => {
-        const gcsFile = bucket.file(`videbate/${file.originalname}`);
+        const gcsFile = exports.bucket.file(`videbate/${file.originalname}`);
         const stream = gcsFile.createWriteStream({
             metadata: {
                 contentType: file.mimetype
@@ -17,7 +20,7 @@ export const uploadHandler = async(file) => {
         });
 
         stream.on('finish', (err) => {
-            resolve(`File ${file.originalname} was uploaded to GCS.`);
+            resolve(`file ${file.originalname} uploaded to google cloud storage`);
         });
 
         stream.end(file.buffer);
