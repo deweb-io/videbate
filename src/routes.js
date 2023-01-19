@@ -21,13 +21,15 @@ const showPostHandler = async(request, response, postId) => {
 };
 
 export default async(fastify, _) => {
+    // Configure multipart/form-data parser
+    await fastify.register(multer.contentParser);
+
     // Configure swagger if needed.
     if(process.env.FASTIFY_SWAGGER) {
         await fastify.register(await import('@fastify/swagger'), {swagger: {info: {
             title: 'Videbate', description: fs.readFileSync('./README.md', 'utf8'), version: '0.1.0'
         }}});
         await fastify.register(await import('@fastify/swagger-ui'), {routePrefix: '/doc'});
-        await fastify.register(multer.contentParser);
     }
 
     // A health check - let's make it a bit more thorough.
