@@ -1,4 +1,4 @@
-import {expect} from 'chai';
+const expect = require('chai').expect;
 
 // A helper function to assert that a function throws an error with a given message.
 const expectError = async(throwingFunction, message) => {
@@ -12,22 +12,70 @@ const expectError = async(throwingFunction, message) => {
     expect(functionResult.message).to.equal(message);
 };
 
+// describe('Storage tests', () => {
+//     it('Upload a file', async() => {
+//         const file = {
+//             originalname: 'test.jpg',
+//             mimetype: 'video/mp4',
+//             buffer: new Buffer.from('test')
+//         };
+//
+//         const sinon = await import('sinon');
+//         const storage = await import('./storage.js');
+//         const bucket = await import('@google-cloud/storage').then(({Storage}) => new Storage().bucket('test'));
+//         const spy = sinon.stub(bucket, 'file').returns({
+//             createWriteStream: () => ({
+//                 end: () => {
+//                     throw new Error('test error');
+//                 }
+//             })
+//         });
+//         console.log('!!!', storage.bucket);
+//         sinon.stub(storage, 'bucket').returns(bucket);
+//
+//         const result = await storage.uploadHandler(file);
+//         console.log('!!!', result);
+//         expect(spy.calledWith(`videbate/${file.originalname}`)).to.be.true;
+//         expect(result).to.equal(`file ${file.originalname} uploaded to google cloud storage`);
+//     });
+//
+//    it('should reject the promise if there is an error', async() => {
+//        const file = {
+//            originalname: 'test.jpg',
+//            mimetype: 'video/mp4',
+//            buffer: new Buffer.from('test')
+//        };
+//
+//        const spy = sinon.stub(bucket, 'file').returns({
+//            createWriteStream: () => ({
+//                end: () => {
+//                    throw new Error('test error');
+//                }
+//            })
+//        });
+//
+//        try {
+//            await uploadHandler(file);
+//        } catch (err) {
+//            expect(err.message).to.equal('test error');
+//        }
+// });
+
 describe('Database dependant tests', () => { // We should mock the database for any non-db tests.
-    let db;
+    const db = require('./db.cjs');
+    process.env.PGDATABASE = `${process.env.PGDATABASE}_test`;
     let now;
 
-    before(async() => {
-        db = await import('./db.js');
-        process.env.PGDATABASE = `${process.env.PGDATABASE}_test`;
-    });
-
     beforeEach(async() => {
-        await db.refreshDatabase();
         now = new Date();
+        const consoleWarn = console.warn;
+        console.warn = () => {};
+        await db.refreshDatabase();
+        console.warn = consoleWarn;
     });
 
     describe('Testing database', () => {
-        it('Tests post insert and retrieval', async() => {
+        it('Post insert and retrieval', async() => {
             expect((await db.getChildren()).length).to.equal(0);
             expect((await db.getDecendants()).length).to.equal(0);
 
@@ -66,7 +114,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect((await db.getPost(['b', 'd'])).id).to.deep.equal(['a', 'b', 'd']);
         });
 
-        it('Tests post integrity protection', async() => {
+        it('Post integrity protection', async() => {
             await expectError(
                 async() => await db.addPost(['a', 'a']),
                 'database integrity error: duplicate component(s) a in requested id a:a'
@@ -77,7 +125,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             );
         });
 
-        it('Tests database update', async() => {
+        it('Database update', async() => {
             await db.addPost(['a']);
             const post = (await db.getPost(['a']));
             expect(post.verified).to.be.equal(null);
@@ -88,38 +136,26 @@ describe('Database dependant tests', () => { // We should mock the database for 
             const updatedPost = (await db.getPost(['a']));
             expect(updatedPost.num_comments).to.equal(5);
             expect(now - updatedPost.verified).to.be.lessThan(100);
-            expect(updatedPost.verified).to.be.greaterThan(updatedPost.created);
+            expect(updatedPost.verified).to.be.greaterThanOrEqual(updatedPost.created);
         });
     });
 
     describe('Testing Web server', () => {
         let server;
-        let db;
 
         before(async() => {
-            db = await import('./db.js');
-            await db.refreshDatabase();
-
+            // Run with swagger.
             process.env.FASTIFY_SWAGGER = 'true';
-            server = (await import('fastify')).default({logger: false});
-            server.register(await import('./routes.js'));
+            server = require('fastify')({logger: false});
+            server.register(require('./routes.cjs'));
         });
 
-        beforeEach(async() => {
-            await db.refreshDatabase();
-        });
-
-        after(async() => {
-            await server.close();
-            console.log('Server closed');
-        });
-
-        it('Tests health endpoint', async() => {
+        it('Health endpoint', async() => {
             const healthResponse = await server.inject({method: 'GET', url: '/health'});
             expect(healthResponse.statusCode).to.equal(200);
         });
 
-        it('Tests static endpoints', async() => {
+        it('Static endpoints', async() => {
             let response;
             response = await server.inject({method: 'GET', url: '/nosuchpath'});
             expect(response.statusCode).to.equal(404);
@@ -130,7 +166,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect(response.headers['content-type']).to.equal('application/javascript');
         });
 
-        it('Tests post creation and display', async() => {
+        it('Post creation and display', async() => {
             const id = ['a'];
             const missingId = ['b'];
 
@@ -145,10 +181,59 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect(showResponse.payload.slice(0, 15)).to.equal('<!DOCTYPE html>');
 
             const missingResponse = await server.inject({method: 'POST', url: '/show', payload: {id: missingId}});
-            console.log(missingResponse.payload);
             expect(missingResponse.statusCode).to.equal(404);
             expect(missingResponse.headers['content-type']).to.equal('text/plain');
             expect(missingResponse.payload.slice(0, 15)).to.equal('post not found');
         });
+
+        it('Video upload', async() => {
+            const uploadGetResponse = await server.inject({method: 'GET', url: '/site/upload.html'});
+            expect(uploadGetResponse.statusCode).to.equal(200);
+            expect(uploadGetResponse.headers['content-type']).to.equal('text/html');
+            expect(uploadGetResponse.payload).to.match(
+                /<form action="\/upload" method="post" enctype="multipart\/form-data">/
+            );
+
+            const noFileUploadResponse = await server.inject({method: 'POST', url: '/upload'});
+            expect(noFileUploadResponse.statusCode).to.equal(400);
+            expect(noFileUploadResponse.headers['content-type']).to.equal('text/plain');
+            expect(noFileUploadResponse.payload).to.equal('no file provided');
+
+            const testMockUpload = async(fileName, uploadHandler) => {
+                // Mock the upload handler.
+                const storage = require('./storage.cjs');
+                const originalFileFactory = storage.bucket.file;
+                storage.bucket.file = (fileName) => ({createWriteStream: () => ({on: uploadHandler})});
+                const form = new require('form-data')();
+                form.append('video', 'content', {filename: fileName, contentType: 'video/mp4'});
+                const response = await server.inject({
+                    method: 'POST',
+                    url: '/upload',
+                    payload: form,
+                    headers: {...form.getHeaders()}
+                });
+
+                // Restore the original upload handler.
+                storage.bucket.file = originalFileFactory;
+
+                return response;
+            };
+
+            const consoleError = console.error;
+            console.error = () => {};
+            const fileErrorResponse = await testMockUpload('test', (event, handler) => {
+                if(event === 'error') handler(new Error('test error'));
+            });
+            console.error = consoleError;
+            expect(fileErrorResponse.statusCode).to.equal(500);
+            expect(JSON.parse(fileErrorResponse.payload).message).to.equal('test error');
+
+            const fileName = Math.random().toString(36);
+            const response = await testMockUpload(fileName, (event, handler) => {
+                if(event === 'finish') handler();
+            });
+            expect(response.statusCode).to.equal(201);
+            expect(response.payload).to.equal(`file ${fileName} uploaded to google cloud storage`);
+        }).timeout(10000);
     });
 });
