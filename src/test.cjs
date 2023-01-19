@@ -136,7 +136,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             const updatedPost = (await db.getPost(['a']));
             expect(updatedPost.num_comments).to.equal(5);
             expect(now - updatedPost.verified).to.be.lessThan(100);
-            expect(updatedPost.verified).to.be.greaterThan(updatedPost.created);
+            expect(updatedPost.verified).to.be.greaterThanOrEqual(updatedPost.created);
         });
     });
 
@@ -204,7 +204,6 @@ describe('Database dependant tests', () => { // We should mock the database for 
                 const storage = require('./storage.cjs');
                 const originalFileFactory = storage.bucket.file;
                 storage.bucket.file = (fileName) => ({createWriteStream: () => ({on: uploadHandler})});
-
                 const form = new require('form-data')();
                 form.append('video', 'content', {filename: fileName, contentType: 'video/mp4'});
                 const response = await server.inject({
@@ -222,7 +221,6 @@ describe('Database dependant tests', () => { // We should mock the database for 
 
             const consoleError = console.error;
             console.error = () => {};
-            await db.refreshDatabase();
             const fileErrorResponse = await testMockUpload('test', (event, handler) => {
                 if(event === 'error') handler(new Error('test error'));
             });

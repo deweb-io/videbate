@@ -1,3 +1,4 @@
+import Fastify from 'fastify';
 # Video Debate Plugin
 
 This is a plugin to the BBS core-UI, exploring a new way to render video posts and navigate between them.
@@ -58,9 +59,9 @@ npm run dev         # Run the Web server in debug mode (auto reload and swagger 
 ```
 
 ## Deploy to GCP
-Set deploy env in deploy.sh and run it.
+Set deploy env in `deployment/cloudRunDeploy.sh` and run it.
 
-## Cloud SQL (postgres)
+## Using Cloud SQL (postgres)
 First, create instance on google cloud.
 
 In order to allow connection from cloud run follow the following:
