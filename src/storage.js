@@ -1,6 +1,8 @@
 import {Storage} from '@google-cloud/storage';
 
-const bucket = new Storage({projectId: process.env.GCP_PROJECT_ID}).bucket(process.env.GCP_BUCKET_NAME);
+// GOOGLE_APPLICATION_CREDENTIALS must be a secret environment variable.
+const bucket = new Storage({projectId: process.env.GCP_PROJECT_ID,
+    credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)}).bucket(process.env.GCP_BUCKET_NAME);
 
 export const uploadHandler = async(file) => {
     return new Promise((resolve, reject) => {

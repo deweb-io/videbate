@@ -1,7 +1,7 @@
 {
   "name": "videbate",
   "type": "module",
-  "version": "0",
+  "version": "0.0.1",
   "description": "A plugin for video debates over the BBS core-UI",
   "exports": {
     "./": "./src/"
@@ -40,7 +40,7 @@
     "@dewebio/bbs-common": "^1.0.6",
     "@google-cloud/storage": "^6.9.0",
     "dotenv": "^16.0.3",
-    "fastify": "^4.10.2",
+    "fastify": "^4.11.0",
     "fastify-multer": "^2.0.3",
     "postgres": "^3.3.2"
   },
