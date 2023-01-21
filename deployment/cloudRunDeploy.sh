@@ -3,6 +3,9 @@
 # NOTE: The env to deploy is hard-coded to prevent the user from doing a mistake.
 deploy_env=creator-eco-stage
 
+read -p "Deploy to "${deploy_env}"? (yes/NO)" ans
+[ "yes" == "$ans" ] || exit 1
+
 # Get to the root dir.
 cd "$(dirname "${BASH_SOURCE[0]}")"/..
 
@@ -15,12 +18,23 @@ if ! [ -x  "$GCP_CLI" ]; then
     curl "$gcloud_mirror/google-cloud-cli-$gcloud_version.tar.gz" | tar xz
 fi
 
-read -p "Deploy to "${deploy_env}"? (yes/NO)" ans
-if [[ "yes" == "$ans" ]]; then
-    # Set working project.
-    "$GCP_CLI" config set project "$deploy_env"
-    # Upload docker image.
-    "$GCP_CLI" builds submit --tag gcr.io/$deploy_env/videbate
-    # Deploy to Cloud Run.
-    "$GCP_CLI" beta run deploy --image gcr.io/$deploy_env/videbate --platform managed
-fi
+# Create a temporary docker file.
+cat > Dockerfile <<EOF
+FROM node:18.12.1
+WORKDIR /usr/src/app
+COPY ./package*.json ./
+RUN npm i --omit=dev
+COPY ./src/ ./src/
+COPY ./site/ ./site/
+COPY ./deployment/cloudRun.cjs ./deployment/cloudRun.cjs
+CMD ["node", "/usr/src/app/deployment/cloudRun.cjs"]
+EOF
+
+# Set working project.
+"$GCP_CLI" config set project "$deploy_env"
+# Upload docker image.
+"$GCP_CLI" builds submit --tag gcr.io/$deploy_env/videbate
+# Deploy to Cloud Run.
+"$GCP_CLI" beta run deploy --image gcr.io/$deploy_env/videbate --platform managed
+
+rm Dockerfile
