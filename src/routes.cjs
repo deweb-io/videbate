@@ -9,11 +9,16 @@ const uploadPreHandler = multer({storage: multer.memoryStorage()});
 
 const showTemplate = fs.readFileSync('./site/show.html.template', 'utf8');
 
-const showPostHandler = async(request, response, postId) => {
+const getEnrichedPost = async(partialPostId) => {
+    // Post IDs are arrays, and as such are encoded as comma-separated strings in the URL.
+    return db.getEnrichedPost(partialPostId[0].split(','));
+};
+
+const showPostHandler = async(request, response, partialPostId) => {
     try {
         return response.type('text/html').send(showTemplate.replace(
-            'const postData = null;',
-            `const postData = ${JSON.stringify(await db.getPostData(postId))};`
+            'const post = null;',
+            `const post = ${JSON.stringify(await getEnrichedPost(partialPostId))};`
         ));
     } catch(error) {
         return response.code(404).type('text/plain').send('post not found');
@@ -37,48 +42,47 @@ module.exports = async(fastify, _) => {
 
     // Create a new post.
     fastify.post('/new', {
-        schema: {body: {type: 'object', properties: {id: {type: 'array', items: {type: 'string'}}}}}
-    }, async(request, response) => response.code(201).send(await db.addPost(request.body.id)));
+        schema: {body: {type: 'object', properties: {
+            id: {type: 'array', items: {type: 'string'}},
+            videoUrl: {type: 'string'}
+        }}}
+    }, async(request, response) => response.code(201).send(await db.addPost(request.body.id, request.body.videoUrl)));
 
-    // View a post with a POST request.
-    fastify.post('/show', {
-        schema: {body: {type: 'object', properties: {id: {type: 'array', items: {type: 'string'}}}}}
-    }, async(request, response) => showPostHandler(request, response, request.body.id));
+    // Get a post as JSON.
+    fastify.get('/post/:partialPostId', {
+        schema: {params: {type: 'object', properties: {partialPostId: {type: 'array', items: {type: 'string'}}}}}
+    }, async(request, response) => response.send(await getEnrichedPost(request.params.partialPostId)));
 
-    // View a post with a GET request.
-    fastify.get('/show/:postId', {
-        schema: {params: {type: 'object', properties: {postId: {type: 'array', items: {type: 'string'}}}}}
-    }, async(request, response) => showPostHandler(request, response, request.params.postId));
-
-    // A route for static serving files from the `site` directory.
-    fastify.get('/site/:fileName', async(request, response) => {
-        const path = `/site/${request.params.fileName}`;
-        try {
-            const content = fs.readFileSync(`.${path}`, 'utf8');
-            if(path.endsWith('.js')) {
-                return response.type('application/javascript').send(content);
-            } else if(path.endsWith('.html')) {
-                return response.type('text/html').send(content);
-            }
-        } catch(_) {
-            // Ignore.
-        }
-        return response.code(404).type('text/plain').send('file not found');
-    });
-
+    // View a post.
+    fastify.get('/show/:partialPostId', {
+        schema: {params: {type: 'object', properties: {partialPostId: {type: 'array', items: {type: 'string'}}}}}
+    }, async(request, response) => showPostHandler(request, response, request.params.partialPostId));
     // Upload a video
     fastify.post('/upload', {preHandler: uploadPreHandler.single('video')}, async(request, response) => {
         const file = request.file;
         if(!file) {
             return response.status(400).type('text/plain').send('no file provided');
         }
-
-        // Upload the file to GCS.
         try {
             response.status(201).send(await storage.uploadHandler(file));
         } catch(error) {
             console.error(error);
             return response.status(500).send(error);
+        }
+    });
+
+    // A route for static serving files from the `site` directory.
+    fastify.get('/site/:fileName', async(request, response) => {
+        const path = `/site/${request.params.fileName}`;
+        try {
+            const content = fs.readFileSync(`.${path}`, 'utf8');
+            if(path.endsWith('.js')) response.type('application/javascript');
+            else if(path.endsWith('.css')) response.type('text/css');
+            else if(path.endsWith('.html')) response.type('text/html');
+            else throw new Error('unknown file type');
+            return response.send(content);
+        } catch(_) {
+            return response.code(404).type('text/plain').send('file not found');
         }
     });
 };
