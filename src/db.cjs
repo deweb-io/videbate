@@ -2,7 +2,8 @@ const dotenv = require('dotenv');
 const postgres = require('postgres');
 
 dotenv.config();
-const psql = postgres();
+const psql = postgres({transform: postgres.toCamel});
+exports.psql = psql;
 
 // Database initialization.
 exports.refreshDatabase = async() => {
@@ -64,9 +65,9 @@ const validateId = async(id) => {
 };
 
 // Posts should only ever be inserted with this function!
-exports.addPost = async(id) => {
+exports.addPost = async(id, videoUrl) => {
     await validateId(id);
-    await psql`INSERT INTO posts(id) VALUES (${idToDb(id)})`;
+    await psql`INSERT INTO posts(id, video_url) VALUES (${idToDb(id)}, ${videoUrl})`;
     return {id};
 };
 
@@ -97,7 +98,7 @@ exports.getDecendants = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}
 `).map((post) => post.id);
 
-exports.getPostData = async(partialId) => {
+exports.getEnrichedPost = async(partialId) => {
     const post = await exports.getPost(partialId);
     return {...post, children: await exports.getChildren(post.id)};
 };

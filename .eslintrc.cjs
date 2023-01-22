@@ -18,12 +18,13 @@ module.exports = {
         after: 'readonly',
         before: 'readonly',
         beforeEach: 'readonly',
-        describe: 'readonly',
-        Element: 'readonly',
-        it: 'readonly',
-        window: 'readonly',
         define: 'readonly',
-        document: 'readonly'
+        describe: 'readonly',
+        document: 'readonly',
+        Element: 'readonly',
+        HTMLVideoElement: 'readonly',
+        it: 'readonly',
+        window: 'readonly'
     },
     rules: {
         'comma-dangle': ['error', 'never'],

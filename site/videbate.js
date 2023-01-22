@@ -6,71 +6,81 @@ const bbs = await import('./bbs-common.js').catch(() => {
 });
 console.info(`bbs-common library loaded from ${isRemote ? 'remote CDN' : 'local file'}`, bbs);
 
-const STATE = {post: null};
-
-// UI framework.
-Element.prototype.add = async function(tagName, className, attributes, drawFunction) {
+// UI framework :)
+Element.prototype.add = async function(tagName, className, attributes, updateFunction) {
     const element = this.appendChild(document.createElement(tagName));
     element.classList.add(...(className ? (Array.isArray(className) ? className : [className]) : []));
     for(const [attribute, value] of Object.entries(attributes || {})) element[attribute] = value;
-    if(drawFunction) {
-        element.draw = () => drawFunction(element);
-        await element.draw();
-    }
+    element.update = updateFunction;
     return element;
 };
-// Element.prototype.remove = async function(tagName, className, attributes, drawFunction) {
 
-const FULL_EXPERIENCE_WIDTH = 600; // TODO - We will need to think this through.
-
-// Required because browsers often block autoplay.
-const play = (videoElement) => {
-    try {
-        videoElement.play();
-    } catch(_) {/* ignore */}
-};
-
-const addControlDiv = async(videoElement) => videoElement.parentNode.add('div', 'controls', null, async(controlDiv) => {
-    controlDiv.navigate = async(partialPostId) => {
-        const post = await new Promise((resolve, reject) => fetch(`/post/${partialPostId}`).then(
-            (response) => response.json()
-        ).then(resolve).catch(reject));
-        STATE.post = post;
-        videoElement.draw();
-        window.location.hash = post.id;
-    };
-
-    controlDiv.add('button', null, {
-        innerText: 'parent', onclick: async() => {
-            controlDiv.navigate(STATE.post.id.slice(0, -1).join(','));
-        }
-    });
-});
-
-const addVideoElement = async(parent) => parent.add('video', null, {
-    autoplay: true, controls: true, muted: true, src: STATE.post.video_url
-}, async(videoElement) => {
-    if(videoElement.src !== STATE.post.videoUrl) {
-        videoElement.src = STATE.post.videoUrl;
-        if(videoElement.classList.contains('full')) {
-            play(videoElement);
-        }
-    }
-    if(window.innerWidth >= FULL_EXPERIENCE_WIDTH && !videoElement.classList.contains('full')) {
-        play(videoElement);
-        videoElement.controls = false;
-        videoElement.classList.add('full');
-        videoElement.controlDiv = await addControlDiv(videoElement);
-    } else if(window.innerWidth < FULL_EXPERIENCE_WIDTH && videoElement.classList.contains('full')) {
-        videoElement.controlDiv.remove();
-        videoElement.classList.remove('full');
-        videoElement.controls = true;
-    }
-});
+// Detect which mode we are on (full or not).
+// TODO - not certain this is the best way to do it.
+const FULL_EXPERIENCE_WIDTH = 600;
+const isFull = () => window.innerWidth >= FULL_EXPERIENCE_WIDTH;
 
 // The main function.
 export const show = async(appElement, post) => {
-    STATE.post = post;
-    const videoElement = await addVideoElement(appElement);
-    window.addEventListener('resize', () => videoElement.draw());
+    const state = {
+        post: post,
+        full: isFull(),
+        playing: false
+    };
+    const ui = await appElement.add('div');
+
+    const player = await ui.add('video', state.full ? 'full' : null, {
+        autoplay: state.full, controls: !state.full, src: state.post.videoUrl
+    });
+    player.addEventListener('play', () => state.playing = true);
+    player.addEventListener('pause', () => state.playing = false);
+    player.addEventListener('ended', () => state.playing = false);
+    player.tryToPlay = () => {
+        // Browsers often block programmatic playback of videos.
+        try {
+            player.play();
+        } catch(_) {/* ignore */}
+    };
+
+    // Cascading update.
+    const updateListeners = [];
+    const update = () => updateListeners.forEach((listener) => listener.update(listener));
+
+    const navigate = async(partialPostId) => {
+        const post = await new Promise((resolve, reject) => fetch(`/post/${partialPostId}`).then(
+            (response) => response.json()
+        ).then(resolve).catch(reject));
+        if(post.id === state.post.id) return;
+        state.post = post;
+        player.src = state.post.videoUrl;
+        if(state.full) {
+            player.tryToPlay();
+        }
+        window.location.hash = post.id;
+        update();
+    };
+
+    const controlOverlay = await appElement.add('div', 'control');
+    updateListeners.push(
+        await controlOverlay.add('button', null, {
+            disabled: state.post.id.length < 2,
+            innerText: 'Parent',
+            onclick: () => navigate(state.post.id.slice(0, -1))
+        }, (element) => {
+            element.disabled = state.post.id.length < 2;
+            element.hidden = !state.full;
+        })
+    );
+
+    const setFull = (full) => {
+        if(state.full === full) return;
+        player.classList.toggle('full', full);
+        player.autoplay = full;
+        player.controls = !full;
+        if(full) player.tryToPlay();
+        state.full = full;
+        update();
+    };
+
+    window.addEventListener('resize', () => setFull(window.innerWidth >= FULL_EXPERIENCE_WIDTH));
 };
