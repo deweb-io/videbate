@@ -1,4 +1,3 @@
-import Fastify from 'fastify';
 # Video Debate Plugin
 
 This is a plugin to the BBS core-UI, exploring a new way to render video posts and navigate between them.

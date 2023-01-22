@@ -12,55 +12,6 @@ const expectError = async(throwingFunction, message) => {
     expect(functionResult.message).to.equal(message);
 };
 
-// describe('Storage tests', () => {
-//     it('Upload a file', async() => {
-//         const file = {
-//             originalname: 'test.jpg',
-//             mimetype: 'video/mp4',
-//             buffer: new Buffer.from('test')
-//         };
-//
-//         const sinon = await import('sinon');
-//         const storage = await import('./storage.js');
-//         const bucket = await import('@google-cloud/storage').then(({Storage}) => new Storage().bucket('test'));
-//         const spy = sinon.stub(bucket, 'file').returns({
-//             createWriteStream: () => ({
-//                 end: () => {
-//                     throw new Error('test error');
-//                 }
-//             })
-//         });
-//         console.log('!!!', storage.bucket);
-//         sinon.stub(storage, 'bucket').returns(bucket);
-//
-//         const result = await storage.uploadHandler(file);
-//         console.log('!!!', result);
-//         expect(spy.calledWith(`videbate/${file.originalname}`)).to.be.true;
-//         expect(result).to.equal(`file ${file.originalname} uploaded to google cloud storage`);
-//     });
-//
-//    it('should reject the promise if there is an error', async() => {
-//        const file = {
-//            originalname: 'test.jpg',
-//            mimetype: 'video/mp4',
-//            buffer: new Buffer.from('test')
-//        };
-//
-//        const spy = sinon.stub(bucket, 'file').returns({
-//            createWriteStream: () => ({
-//                end: () => {
-//                    throw new Error('test error');
-//                }
-//            })
-//        });
-//
-//        try {
-//            await uploadHandler(file);
-//        } catch (err) {
-//            expect(err.message).to.equal('test error');
-//        }
-// });
-
 describe('Database dependant tests', () => { // We should mock the database for any non-db tests.
     const db = require('./db.cjs');
     process.env.PGDATABASE = `${process.env.PGDATABASE}_test`;

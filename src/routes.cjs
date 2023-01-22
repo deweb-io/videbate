@@ -75,7 +75,6 @@ module.exports = async(fastify, _) => {
 
         // Upload the file to GCS.
         try {
-            // In case of sucess, the response will be sent by the multer middleware
             response.status(201).send(await storage.uploadHandler(file));
         } catch(error) {
             console.error(error);
