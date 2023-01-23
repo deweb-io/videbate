@@ -40,6 +40,7 @@ Create an `.env` file with some basic params:
 * `FASTIFY_SWAGGER`  - Serve swagger-UI from `/doc` (defaults to false)
 * `GCP_PROJECT_ID`   - GCP project name for video file storage (no default - required)
 * `GCP_BUCKET_NAME`  - GCP bucket name for video file storage (no default - required)
+* `GOOGLE_APPLICATION_CREDENTIALS` - Service account json for access Google Cloud Storage
 * `PGHOST`           - Postgres host (defaults to localhost)
 * `PGPORT`           - Postgres port (defualts to 5432)
 * `PGDATABASE`       - Postgres database (schema) name (defaults to postgres)
@@ -58,7 +59,23 @@ npm run dev         # Run the Web server in debug mode (auto reload and swagger 
 ```
 
 ## Deploy to GCP
+
+Create an env.yaml file in deployment directory with the following params (documented on running localy section):
+* `FASTIFY_LOG_LEVEL` - Fastify log level
+* `GCP_PROJECT_ID`
+* `GCP_BUCKET_NAME`
+* `PGHOST`
+* `PGPORT`
+* `PGDATABASE` 
+
+Set the following secerts in Secrets Manager:
+* `PGUSERNAME`
+* `PGPASSWORD`
+* `GOOGLE_APPLICATION_CREDENTIALS`
+
 Set deploy env in `deployment/cloudRunDeploy.sh` and run it.
+
+After deployment, set the secrets as environment variables.
 
 ## Using Cloud SQL (postgres)
 First, create instance on google cloud.
