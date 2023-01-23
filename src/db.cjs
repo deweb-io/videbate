@@ -101,3 +101,21 @@ exports.getPostData = async(partialId) => {
     const post = await exports.getPost(partialId);
     return {...post, children: await exports.getChildren(post.id)};
 };
+
+exports.addUserEvent = async(userId, postId, event, data) => {
+    await psql`INSERT INTO user_events(user_id, post_id, event, data) 
+        VALUES (${userId}, ${idToDb(postId)}, ${event}, ${data})`;
+};
+
+exports.getUserEvents = async(userId, postId) => {
+    const events = (await psql`SELECT * FROM user_events 
+        WHERE user_id = ${userId} AND post_id = ${idToDb(postId)} ORDER BY created`);
+    return events.map((event) => ({event: event.event, data: event.data, timestamp: event.timestamp}));
+};
+
+exports.getAllPostEvents = async(postId) => {
+    const events = (await psql`SELECT * FROM user_events 
+        WHERE post_id = ${idToDb(postId)} ORDER BY created`);
+    return events.map((event) =>
+        ({userId: event.user_id, event: event.event, data: event.data, created: event.created}));
+};
