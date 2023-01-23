@@ -61,6 +61,7 @@ npm run dev         # Run the Web server in debug mode (auto reload and swagger 
 ## Deploy to GCP
 
 Create an env.yaml file in deployment directory with the following params (documented on running localy section):
+
 * `FASTIFY_LOG_LEVEL` - Fastify log level
 * `GCP_PROJECT_ID`
 * `GCP_BUCKET_NAME`
@@ -69,6 +70,7 @@ Create an env.yaml file in deployment directory with the following params (docum
 * `PGDATABASE` 
 
 Set the following secerts in Secrets Manager:
+
 * `PGUSERNAME`
 * `PGPASSWORD`
 * `GOOGLE_APPLICATION_CREDENTIALS`
