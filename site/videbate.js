@@ -11,7 +11,10 @@ Element.prototype.add = async function(tagName, className, attributes, updateFun
     const element = this.appendChild(document.createElement(tagName));
     element.classList.add(...(className ? (Array.isArray(className) ? className : [className]) : []));
     for(const [attribute, value] of Object.entries(attributes || {})) element[attribute] = value;
-    element.update = updateFunction;
+    if(updateFunction) {
+        element.update = async() => updateFunction(element);
+        await element.update();
+    }
     return element;
 };
 
@@ -44,7 +47,7 @@ export const show = async(appElement, post) => {
 
     // Cascading update.
     const updateListeners = [];
-    const update = () => updateListeners.forEach((listener) => listener.update(listener));
+    const update = () => updateListeners.forEach((listener) => listener.update());
 
     const navigate = async(partialPostId) => {
         const post = await new Promise((resolve, reject) => fetch(`/post/${partialPostId}`).then(
@@ -61,23 +64,26 @@ export const show = async(appElement, post) => {
     };
 
     const controlOverlay = await appElement.add('div', 'control');
-    updateListeners.push(
-        await controlOverlay.add('button', null, {
-            disabled: state.post.id.length < 2,
-            innerText: 'Parent',
-            onclick: () => navigate(state.post.id.slice(0, -1))
-        }, (element) => {
-            element.disabled = state.post.id.length < 2;
-            element.hidden = !state.full;
-        })
-    );
+    updateListeners.push(...await Promise.all(Object.entries({
+        'Parent': () => state.post.id.slice(0, -1),
+        'Top Child': () => state.post.children[0],
+        'Next Sibling': () => state.post.siblings.nextSiblings[0],
+        'Previous Sibling': () => state.post.siblings.previousSiblings.at(-1)
+    }).map(([label, getPostId]) => controlOverlay.add('button', null, {textContent: label}, (button) => {
+        const postId = getPostId() || [];
+        button.disabled = postId.length < 1;
+        button.hidden = !state.full;
+        button.onclick = () => navigate(postId);
+    }))));
 
     const setFull = (full) => {
         if(state.full === full) return;
         player.classList.toggle('full', full);
         player.autoplay = full;
         player.controls = !full;
-        if(full) player.tryToPlay();
+        if(full) {
+            player.tryToPlay();
+        }
         state.full = full;
         update();
     };

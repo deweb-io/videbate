@@ -71,11 +71,11 @@ describe('Database dependant tests', () => { // We should mock the database for 
         it('Post integrity protection', async() => {
             await expectError(
                 async() => await db.addPost(['a', 'a'], 'vid a:a'),
-                'database integrity error: duplicate component(s) a in requested id a:a'
+                'database integrity error: duplicate component(s) a in requested id a,a'
             );
             await expectError(
                 async() => await db.addPost(['a', 'b', 'c'], 'vid a:b:c'),
-                'database integrity error: parent missing a:b for requested id a:b:c'
+                'database integrity error: parent missing a,b for requested id a,b,c'
             );
         });
 
