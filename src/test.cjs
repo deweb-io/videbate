@@ -76,7 +76,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             );
         });
 
-        it('Database update', async() => {
+        it('Post update', async() => {
             await db.addPost(['a']);
             const post = (await db.getPost(['a']));
             expect(post.verified).to.be.equal(null);
@@ -88,6 +88,16 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect(updatedPost.num_comments).to.equal(5);
             expect(now - updatedPost.verified).to.be.lessThan(100);
             expect(updatedPost.verified).to.be.greaterThanOrEqual(updatedPost.created);
+        });
+
+        it('User events insert and retrieval', async() => {
+            expect((await db.getUserEvents('user1', ['a'])).length).to.equal(0);
+            await db.addUserEvent('user1', ['a'], 'view', '{duration: 60 seconds}');
+            expect((await db.getUserEvents('user1', ['a'])).length).to.equal(1);
+            expect((await db.getUserEvents('user1', ['a']))[0].event).to.equal('view');
+            expect((await db.getUserEvents('user1', ['a']))[0].data).to.equal('{duration: 60 seconds}');
+            expect((await db.getAllPostEvents(['a'])).length).to.equal(1);
+            expect((await db.getAllPostEvents(['a']))[0].event).to.equal('view');
         });
     });
 
@@ -186,5 +196,11 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect(response.statusCode).to.equal(201);
             expect(response.payload).to.equal(`file ${fileName} uploaded to google cloud storage`);
         }).timeout(10000);
+
+        it('User event', async() => {
+            const response = await server.inject({method: 'POST', url: '/userEvent',
+                payload: {event: 'view', data: {duration: '60 seconds'}, postId: ['a'], userId: 'user1'}});
+            expect(response.statusCode).to.equal(201);
+        });
     });
 });

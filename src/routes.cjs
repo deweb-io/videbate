@@ -81,4 +81,13 @@ module.exports = async(fastify, _) => {
             return response.status(500).send(error);
         }
     });
+
+    fastify.post('/userEvent', {
+        schema: {body: {type: 'object', properties: {
+            event: {type: 'string'}, data: {type: 'object'},
+            postId: {type: 'array', items: {type: 'string'}}, userId: {type: 'string'}}}}
+    }, async(request, response) => {
+        await db.addUserEvent(request.body.userId, request.body.postId, request.body.event, request.body.data);
+        return response.status(201).type('text/plain').send('created');
+    });
 };
