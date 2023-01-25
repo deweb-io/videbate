@@ -10,7 +10,7 @@ CREATE INDEX posts_verified ON posts(verified);
 CREATE TABLE user_events(
         created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         event TEXT NOT NULL,
-        data TEXT,
+        data JSON NOT NULL,
         post_id TEXT NOT NULL,
         user_id TEXT NOT NULL
 );
