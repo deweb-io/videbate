@@ -24,7 +24,8 @@ const FULL_EXPERIENCE_WIDTH = 600;
 const isFull = () => window.innerWidth >= FULL_EXPERIENCE_WIDTH;
 
 // The main function.
-export const show = async(appElement, post) => {
+export const show = async(core, appElement, post) => {
+    console.log(post);
     const state = {
         post: post,
         full: isFull(),
@@ -59,7 +60,7 @@ export const show = async(appElement, post) => {
         if(state.full) {
             player.tryToPlay();
         }
-        window.location.hash = post.id;
+        core.navigateToPost(post.id);
         update();
     };
 
@@ -89,4 +90,14 @@ export const show = async(appElement, post) => {
     };
 
     window.addEventListener('resize', () => setFull(window.innerWidth >= FULL_EXPERIENCE_WIDTH));
+};
+
+// Lifecycle hooks.
+export const mount = async(appElement, core) => {
+    // This should really come from a component in the path, but for now we'll just use the hash, so it can be static.
+    const partialPostId = window.location.hash.slice(1);
+    const post = await new Promise((resolve, reject) => fetch(`/post/${partialPostId}`).then(
+        (response) => response.json()
+    ).then(resolve).catch(reject));
+    await show(core, appElement, post);
 };

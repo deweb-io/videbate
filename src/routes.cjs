@@ -7,24 +7,6 @@ const storage = require('./storage.cjs');
 
 const uploadPreHandler = multer({storage: multer.memoryStorage()});
 
-const showTemplate = fs.readFileSync('./site/show.html.template', 'utf8');
-
-const getEnrichedPost = async(partialPostId) => {
-    // Post IDs are arrays, and as such are encoded as comma-separated strings in the URL.
-    return db.getEnrichedPost(partialPostId[0].split(','));
-};
-
-const showPostHandler = async(request, response, partialPostId) => {
-    try {
-        return response.type('text/html').send(showTemplate.replace(
-            'const post = null;',
-            `const post = ${JSON.stringify(await getEnrichedPost(partialPostId))};`
-        ));
-    } catch(error) {
-        return response.code(404).type('text/plain').send('post not found');
-    }
-};
-
 module.exports = async(fastify, _) => {
     // Configure swagger if needed.
     if(process.env.FASTIFY_SWAGGER) {
@@ -51,12 +33,11 @@ module.exports = async(fastify, _) => {
     // Get a post as JSON.
     fastify.get('/post/:partialPostId', {
         schema: {params: {type: 'object', properties: {partialPostId: {type: 'array', items: {type: 'string'}}}}}
-    }, async(request, response) => response.send(await getEnrichedPost(request.params.partialPostId)));
+    }, async(request, response) => response.send(
+        // Post IDs are arrays, and as such are encoded as comma-separated strings in the URL.
+        await db.getEnrichedPost(request.params.partialPostId[0].split(','))
+    ));
 
-    // View a post.
-    fastify.get('/show/:partialPostId', {
-        schema: {params: {type: 'object', properties: {partialPostId: {type: 'array', items: {type: 'string'}}}}}
-    }, async(request, response) => showPostHandler(request, response, request.params.partialPostId));
     // Upload a video
     fastify.post('/upload', {preHandler: uploadPreHandler.single('video')}, async(request, response) => {
         const file = request.file;
