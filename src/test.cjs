@@ -13,8 +13,9 @@ const expectError = async(throwingFunction, message) => {
 };
 
 describe('Database dependant tests', () => { // We should mock the database for any non-db tests.
-    const db = require('./db.cjs');
+    require('dotenv').config();
     process.env.PGDATABASE = `${process.env.PGDATABASE}_test`;
+    const db = require('./db.cjs');
     let now;
 
     beforeEach(async() => {
@@ -22,6 +23,8 @@ describe('Database dependant tests', () => { // We should mock the database for 
         const consoleWarn = console.warn;
         console.warn = () => {};
         await db.refreshDatabase();
+        // During development our migrations may have some posts, so we clear the posts table to be on the safe side.
+        await db.psql`DELETE FROM posts`;
         console.warn = consoleWarn;
     });
 
@@ -30,7 +33,7 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect((await db.getChildren()).length).to.equal(0);
             expect((await db.getDecendants()).length).to.equal(0);
 
-            await db.addPost(['a']);
+            await db.addPost(['a'], 'vid a');
             expect((await db.getChildren()).length).to.equal(1);
             expect((await db.getChildren(['a'])).length).to.equal(0);
             expect((await db.getDecendants()).length).to.equal(1);
@@ -38,25 +41,25 @@ describe('Database dependant tests', () => { // We should mock the database for 
             const post = (await db.getPost(['a']));
             expect(post.id).to.deep.equal(['a']);
             expect(post.verified).to.be.equal(null);
-            expect(post.num_comments).to.equal(0);
+            expect(post.numComments).to.equal(0);
             expect(now - post.created).to.be.lessThan(100);
             expect(now - post.updated).to.be.lessThan(100);
 
-            await db.addPost(['b']);
+            await db.addPost(['b'], 'vid b');
             expect((await db.getChildren()).length).to.equal(2);
             expect((await db.getChildren(['a'])).length).to.equal(0);
             expect((await db.getChildren(['b'])).length).to.equal(0);
 
-            await db.addPost(['a', 'b']);
-            await db.addPost(['a', 'b', 'c']);
+            await db.addPost(['a', 'b'], 'vid a:b');
+            await db.addPost(['a', 'b', 'c'], 'vid a:b:c');
             expect((await db.getChildren()).length).to.equal(2);
             expect((await db.getChildren(['a'])).length).to.equal(1);
             expect((await db.getChildren(['a', 'b'])).length).to.equal(1);
             expect((await db.getChildren(['a', 'b', 'c'])).length).to.equal(0);
 
-            await db.addPost(['a', 'b', 'd']);
-            await db.addPost(['a', 'c']);
-            await db.addPost(['a', 'd']);
+            await db.addPost(['a', 'b', 'd'], 'vid a:b:d');
+            await db.addPost(['a', 'c'], 'vid a:c');
+            await db.addPost(['a', 'd'], 'vid a:d');
             expect((await db.getChildren(['a'])).length).to.equal(3);
             expect((await db.getDecendants()).length).to.equal(7);
 
@@ -67,25 +70,25 @@ describe('Database dependant tests', () => { // We should mock the database for 
 
         it('Post integrity protection', async() => {
             await expectError(
-                async() => await db.addPost(['a', 'a']),
-                'database integrity error: duplicate component(s) a in requested id a:a'
+                async() => await db.addPost(['a', 'a'], 'vid a:a'),
+                'database integrity error: duplicate component(s) a in requested id a,a'
             );
             await expectError(
-                async() => await db.addPost(['a', 'b', 'c']),
-                'database integrity error: parent missing a:b for requested id a:b:c'
+                async() => await db.addPost(['a', 'b', 'c'], 'vid a:b:c'),
+                'database integrity error: parent missing a,b for requested id a,b,c'
             );
         });
 
         it('Database update', async() => {
-            await db.addPost(['a']);
+            await db.addPost(['a'], 'vid a');
             const post = (await db.getPost(['a']));
             expect(post.verified).to.be.equal(null);
-            expect(post.num_comments).to.equal(0);
+            expect(post.numComments).to.equal(0);
             expect(now - post.updated).to.be.lessThan(100);
 
             await db.updatePost(['a'], 5);
             const updatedPost = (await db.getPost(['a']));
-            expect(updatedPost.num_comments).to.equal(5);
+            expect(updatedPost.numComments).to.equal(5);
             expect(now - updatedPost.verified).to.be.lessThan(100);
             expect(updatedPost.verified).to.be.greaterThanOrEqual(updatedPost.created);
         });
@@ -112,26 +115,38 @@ describe('Database dependant tests', () => { // We should mock the database for 
             expect(response.statusCode).to.equal(404);
             response = await server.inject({method: 'GET', url: '/site/nosuchpath'});
             expect(response.statusCode).to.equal(404);
+            response = await server.inject({method: 'GET', url: '/site/show.html.template'});
+            expect(response.statusCode).to.equal(404);
             response = await server.inject({method: 'GET', url: '/site/videbate.js'});
             expect(response.statusCode).to.equal(200);
             expect(response.headers['content-type']).to.equal('application/javascript');
+            response = await server.inject({method: 'GET', url: '/site/style.css'});
+            expect(response.statusCode).to.equal(200);
+            expect(response.headers['content-type']).to.equal('text/css');
         });
 
         it('Post creation and display', async() => {
             const id = ['a'];
             const missingId = ['b'];
+            const videoUrl = 'a video URL';
 
-            const newResponse = await server.inject({method: 'POST', url: '/new', payload: {id}});
+            const newResponse = await server.inject({
+                method: 'POST', url: '/new', payload: {id, videoUrl}
+            });
             expect(newResponse.statusCode).to.equal(201);
             expect(newResponse.json().id).to.deep.equal(id);
             expect((await db.getPost(id)).id).to.deep.equal(id);
 
-            const showResponse = await server.inject({method: 'POST', url: '/show', payload: {id}});
+            const showResponse = await server.inject({
+                method: 'GET', url: `/show/${id.join(',')}`
+            });
             expect(showResponse.statusCode).to.equal(200);
             expect(showResponse.headers['content-type']).to.equal('text/html');
             expect(showResponse.payload.slice(0, 15)).to.equal('<!DOCTYPE html>');
 
-            const missingResponse = await server.inject({method: 'POST', url: '/show', payload: {id: missingId}});
+            const missingResponse = await server.inject({
+                method: 'GET', url: `/show/${missingId.join(',')}`
+            });
             expect(missingResponse.statusCode).to.equal(404);
             expect(missingResponse.headers['content-type']).to.equal('text/plain');
             expect(missingResponse.payload.slice(0, 15)).to.equal('post not found');

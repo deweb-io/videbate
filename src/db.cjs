@@ -2,7 +2,8 @@ const dotenv = require('dotenv');
 const postgres = require('postgres');
 
 dotenv.config();
-const psql = postgres();
+const psql = postgres({transform: postgres.toCamel});
+exports.psql = psql;
 
 // Database initialization.
 exports.refreshDatabase = async() => {
@@ -52,21 +53,21 @@ const validateId = async(id) => {
         if(new Set(id).size !== id.length) {
             throw new Error(`database integrity error: duplicate component(s) ${
                 id.filter((component, index) => id.indexOf(component) !== index).join(', ')
-            } in requested id ${idToDb(id)}`);
+            } in requested id ${id}`);
         }
         if(!await hasParent(id)) {
-            throw new Error(`database integrity error: parent missing ${
-                idToDb(id.slice(0, -1))
-            } for requested id ${idToDb(id)}`);
+            throw new Error(
+                `database integrity error: parent missing ${id.slice(0, -1)} for requested id ${id}`
+            );
         }
     }
     return true;
 };
 
 // Posts should only ever be inserted with this function!
-exports.addPost = async(id) => {
+exports.addPost = async(id, videoUrl) => {
     await validateId(id);
-    await psql`INSERT INTO posts(id) VALUES (${idToDb(id)})`;
+    await psql`INSERT INTO posts(id, video_url) VALUES (${idToDb(id)}, ${videoUrl})`;
     return {id};
 };
 
@@ -83,7 +84,7 @@ exports.getPost = async(partialId) => {
         ORDER BY LENGTH(id), id
     `;
     if(posts.length === 0) {
-        throw new Error(`no posts found for partial id ${idToDb(partialId)}`);
+        throw new Error(`no posts found for partial id ${partialId}`);
     }
     return {...posts[0], id: idFromDb(posts[0].id)};
 };
@@ -91,13 +92,21 @@ exports.getPost = async(partialId) => {
 exports.getChildren = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}
     AND id NOT LIKE ${idToDb([...(id || []), '%', '%'])}
-`).map((post) => post.id);
+`).map((post) => idFromDb(post.id));
 
 exports.getDecendants = async(id) => (await psql`SELECT id FROM posts
     WHERE id LIKE ${idToDb([...(id || []), '%'])}
 `).map((post) => post.id);
 
-exports.getPostData = async(partialId) => {
+exports.getSiblings = async(id) => {
+    const children = await exports.getChildren(getParentId(id));
+    const postIndex = children.findIndex((child) => idToDb(child) === idToDb(id));
+    return {previousSiblings: children.slice(0, postIndex), nextSiblings: children.slice(postIndex + 1)};
+};
+
+exports.getEnrichedPost = async(partialId) => {
     const post = await exports.getPost(partialId);
-    return {...post, children: await exports.getChildren(post.id)};
+    const children = await exports.getChildren(post.id);
+    const siblings = await exports.getSiblings(post.id);
+    return {...post, children, siblings};
 };
